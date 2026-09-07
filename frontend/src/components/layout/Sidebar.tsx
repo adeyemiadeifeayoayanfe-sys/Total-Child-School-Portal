@@ -115,7 +115,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                   to={item.to}
                   className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                   onClick={onClose}
-                  aria-current={({ isActive }) => (isActive ? 'page' : undefined)}
+                  
                 >
                   <span className="sidebar-link-icon" aria-hidden="true">{item.icon}</span>
                   {item.label}

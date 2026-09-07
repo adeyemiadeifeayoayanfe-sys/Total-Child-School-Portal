@@ -194,6 +194,7 @@ export interface Result {
   class?: Class;
   session?: AcademicSession;
   term?: Term;
+  scores?: ResultSubject[];
 }
 
 export interface ResultSubject {

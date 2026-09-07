@@ -401,7 +401,9 @@ export default function ResultsPage() {
               <div>
                 <p className="text-sm text-gray-500">Term</p>
                 <p className="font-semibold">
-                  {selectedResult.term?.name.charAt(0).toUpperCase() + selectedResult.term?.name.slice(1)} Term
+                  {selectedResult.term?.name
+  ? `${selectedResult.term.name.charAt(0).toUpperCase()}${selectedResult.term.name.slice(1)} Term`
+  : '—'}
                 </p>
               </div>
               <div>

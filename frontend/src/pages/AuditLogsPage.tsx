@@ -3,6 +3,7 @@ import { useApi } from '../hooks/useApi';
 import { AuditLog } from '../types';
 import Table from '../components/ui/Table';
 import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 
 export default function AuditLogsPage() {
   const { call } = useApi();
