@@ -1,0 +1,21 @@
+{
+  "name": "school-management-portal",
+  "version": "1.0.0",
+  "description": "Complete production-quality school management platform",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "bootstrap:super-admins": "cd backend && npm run bootstrap:super-admins",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "db:migrate": "cd database && psql $DATABASE_URL -f migrations/001_init.sql",
+    "db:seed": "cd database && psql $DATABASE_URL -f seed.sql"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
