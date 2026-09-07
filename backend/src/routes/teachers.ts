@@ -20,10 +20,17 @@ router.get('/', authenticate, authorizeAdmin, async (req: Request, res: Response
     let query = supabaseAdmin
       .from('teachers')
       .select(`
-        *,
-        user:users(email, status),
-        profile:profiles(first_name, last_name, phone)
-      `);
+  *,
+  user:users!teachers_user_id_fkey(
+    email,
+    status,
+    profile:profiles(
+      first_name,
+      last_name,
+      phone
+    )
+  )
+`);
 
     if (search) {
       query = query.or(`profile.first_name.ilike.%${search}%,profile.last_name.ilike.%${search}%,staff_number.ilike.%${search}%`);
@@ -33,7 +40,8 @@ router.get('/', authenticate, authorizeAdmin, async (req: Request, res: Response
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-      throw new AppError('Failed to fetch teachers', 500);
+      console.error('Failed to fetch teachers:', error);
+      throw new AppError(`Failed to fetch teachers: ${error.message}`, 500);
     }
 
     res.json({

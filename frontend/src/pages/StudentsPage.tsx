@@ -45,10 +45,12 @@ export default function StudentsPage() {
     });
 
     const result = await call(`/students?${query.toString()}`);
-    if (result.success && result.data) {
-      setStudents(result.data.data);
-      setTotalPages(result.data.total_pages);
-    }
+    if (result.success) {
+  const response = result as any;
+
+  setStudents(response.data || []);
+  setTotalPages(response.total_pages || 1);
+}
     setLoading(false);
   }, [page, search, call]);
 
