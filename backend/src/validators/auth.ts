@@ -20,13 +20,15 @@ export const resetPasswordSchema = z.object({
 export const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['admin', 'teacher', 'parent']),
+    roles: z.array(
+    z.enum(['admin', 'teacher', 'parent'])
+    ).min(1, 'At least one role is required').max(3, 'A user can have at most three roles'),
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   date_of_birth: z.string().optional().nullable(),
-  gender: z.enum(['male', 'female', 'other']).optional().nullable(),
+  gender: z.enum(['male', 'female']).optional().nullable(),
 });
 
 export const updateUserSchema = z.object({

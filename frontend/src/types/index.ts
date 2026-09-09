@@ -41,6 +41,7 @@ export interface User {
   id: string;
   email: string;
   role: UserRole;
+  roles: UserRole[];
   status: AccountStatus;
   profile?: Profile;
   teacher?: Teacher;
@@ -325,3 +326,4 @@ export interface AuditLog {
   created_at: string;
   user?: User | null;
 }
+

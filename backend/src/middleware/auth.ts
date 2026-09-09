@@ -63,15 +63,39 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
 
     // Get profile
     const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+  .from('profiles')
+  .select('*')
+  .eq('user_id', user.id)
+  .single();
 
-    req.user = {
-      ...user,
-      profile: profile || undefined,
-    };
+const { data: userRoles, error: rolesError } = await supabaseAdmin
+  .from('user_roles')
+  .select('role')
+  .eq('user_id', user.id);
+
+if (rolesError) {
+  console.error('Failed to load user roles:', rolesError.message);
+  res.status(500).json({
+    success: false,
+    error: 'Failed to load user roles',
+  });
+  return;
+}
+
+const roles = userRoles?.map((item) => item.role as UserRole) || [];
+
+// Backward compatibility: if an old user somehow has no
+// user_roles record, fall back to the users.role value.
+if (roles.length === 0) {
+  roles.push(user.role as UserRole);
+}
+
+req.user = {
+  ...user,
+  role: user.role as UserRole,
+  roles,
+  profile: profile || undefined,
+};
 
     req.authUserId = user.id;
     next();
@@ -98,7 +122,7 @@ export function authorize(...roles: UserRole[]) {
       return;
     }
 
-    if (!roles.includes(req.user.role as UserRole)) {
+    if (!req.user.roles?.some((userRole) => roles.includes(userRole))) {
       res.status(403).json({
         success: false,
         error: 'You do not have permission to perform this action',

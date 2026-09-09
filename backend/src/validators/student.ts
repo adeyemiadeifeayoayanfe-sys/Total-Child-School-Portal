@@ -6,7 +6,7 @@ export const createStudentSchema = z.object({
   last_name: z.string().min(1, 'Last name is required'),
   middle_name: z.string().optional().nullable(),
   date_of_birth: z.string().min(1, 'Date of birth is required'),
-  gender: z.enum(['male', 'female', 'other']),
+  gender: z.enum(['male', 'female']),
   address: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
@@ -20,7 +20,7 @@ export const updateStudentSchema = z.object({
   last_name: z.string().min(1).optional(),
   middle_name: z.string().optional().nullable(),
   date_of_birth: z.string().optional(),
-  gender: z.enum(['male', 'female', 'other']).optional(),
+  gender: z.enum(['male', 'female']).optional(),
   address: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
@@ -38,5 +38,19 @@ export const assignStudentToClassSchema = z.object({
 export const assignParentToStudentSchema = z.object({
   parent_id: z.string().uuid('Invalid parent ID'),
   student_id: z.string().uuid('Invalid student ID'),
+  is_primary: z.boolean().optional(),
+});
+
+export const assignParentByAdmissionNumbersSchema = z.object({
+  parent_id: z.string().uuid('Invalid parent ID'),
+  admission_numbers: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1, 'Admission number cannot be empty')
+        .regex(/^\d{4}$/, 'Admission numbers must be exactly 4 digits')
+    )
+    .min(1, 'At least one admission number is required'),
   is_primary: z.boolean().optional(),
 });

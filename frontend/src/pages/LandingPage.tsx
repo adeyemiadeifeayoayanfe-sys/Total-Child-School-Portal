@@ -21,7 +21,12 @@ export default function LandingPage() {
       <nav className="landing-nav">
         <div className="landing-nav-inner">
           <div className="landing-logo" onClick={() => scrollToSection('hero')}>
-            <div className="landing-logo-icon">CT</div>
+            <div className="landing-logo-icon landing-logo-image">
+  <img
+    src="/logo.jfif"
+    alt="CEM Total Child School logo"
+  />
+</div>
             <span className="landing-logo-text">CEM Total Child</span>
           </div>
           <div className="landing-nav-links">
@@ -79,9 +84,13 @@ export default function LandingPage() {
               <div className="landing-hero-image-placeholder">
                 {/* Replace this div with an <img> tag when you have images */}
                 <div className="placeholder-content">
-                  <span>CT</span>
-                  <p>Empowering the next generation</p>
-                </div>
+  <img
+    src="/logo.jfif"
+    alt="CEM Total Child School logo"
+    className="landing-hero-logo"
+  />
+  <p>Empowering the next generation</p>
+</div>
               </div>
               <div className="landing-hero-accent-box"></div>
             </div>
@@ -265,9 +274,12 @@ export default function LandingPage() {
             </div>
             <div className="landing-about-image">
               <div className="landing-about-placeholder">
-                <span>CT</span>
-                {/* Replace with <img> when you have an image */}
-              </div>
+  <img
+    src="/logo.jfif"
+    alt="CEM Total Child School logo"
+    className="landing-about-logo"
+  />
+</div>
             </div>
           </div>
         </div>
@@ -296,7 +308,12 @@ export default function LandingPage() {
       <footer className="landing-footer" id="contact">
         <div className="landing-footer-inner">
           <div className="landing-footer-brand">
-            <div className="landing-footer-logo">CT</div>
+            <div className="landing-footer-logo landing-footer-logo-image">
+  <img
+    src="/logo.jfif"
+    alt="CEM Total Child School logo"
+  />
+</div>
             <span>CEM Total Child School</span>
           </div>
           <div className="landing-footer-links">

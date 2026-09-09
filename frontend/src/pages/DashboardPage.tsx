@@ -6,21 +6,21 @@ import { LoadingContainer } from '../components/ui/Spinner';
 import Card from '../components/ui/Card';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
   const { call } = useApi();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboard();
-  }, [user?.role]);
+  }, [activeRole]);
 
   async function fetchDashboard() {
     setLoading(true);
     const endpoint =
-      user?.role === 'teacher'
+      activeRole === 'teacher'
         ? '/dashboard/teacher'
-        : user?.role === 'parent'
+        : activeRole === 'parent'
           ? '/dashboard/parent'
           : '/dashboard/admin';
 
@@ -44,7 +44,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (user?.role === 'admin' || user?.role === 'super_admin') {
+  if (activeRole === 'admin' || activeRole === 'super_admin') {
     const data = dashboardData as AdminDashboardData;
     return (
       <div>
@@ -52,7 +52,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="page-title">Dashboard</h1>
             <p className="page-description">
-              Welcome back, {user.profile?.first_name}! Here&apos;s what&apos;s happening today.
+              Welcome back, {user?.profile?.first_name}! Here&apos;s what&apos;s happening today.
             </p>
           </div>
         </div>
@@ -148,13 +148,13 @@ export default function DashboardPage() {
     );
   }
 
-  if (user?.role === 'teacher') {
+  if (activeRole === 'teacher') {
     const data = dashboardData as TeacherDashboardData;
     return (
       <div>
         <div className="page-header">
           <div>
-            <h1 className="page-title">Good morning, {user.profile?.first_name}!</h1>
+            <h1 className="page-title">Good morning, {user?.profile?.first_name}!</h1>
             <p className="page-description">Here&apos;s your teaching overview for today.</p>
           </div>
         </div>
@@ -219,13 +219,13 @@ export default function DashboardPage() {
     );
   }
 
-  if (user?.role === 'parent') {
+  if (activeRole === 'parent') {
     const data = dashboardData as ParentDashboardData;
     return (
       <div>
         <div className="page-header">
           <div>
-            <h1 className="page-title">Welcome, {user.profile?.first_name}!</h1>
+            <h1 className="page-title">Welcome, {user?.profile?.first_name}!</h1>
             <p className="page-description">Here&apos;s an overview of your children.</p>
           </div>
         </div>

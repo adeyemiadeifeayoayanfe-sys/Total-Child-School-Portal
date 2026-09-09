@@ -102,3 +102,10 @@
     font-size: var(--font-size-xl);
   }
 }
+.auth-logo-image {
+  width: 88px;
+  height: 88px;
+  display: block;
+  object-fit: contain;
+  border-radius: var(--radius-lg);
+}

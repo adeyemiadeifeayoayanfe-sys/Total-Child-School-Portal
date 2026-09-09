@@ -13,9 +13,16 @@ interface NavGroup {
   items: NavItem[];
 }
 
-export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user } = useAuth();
-  const role = user?.role;
+export default function Sidebar({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { user, activeRole } = useAuth();
+
+  const role = activeRole || user?.role;
 
   const navGroups: NavGroup[] = [];
 
@@ -24,6 +31,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       label: 'Overview',
       items: [{ to: '/dashboard', icon: 'DB', label: 'Dashboard' }],
     });
+
     navGroups.push({
       label: 'Management',
       items: [
@@ -34,14 +42,17 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         { to: '/subjects', icon: 'SU', label: 'Subjects' },
       ],
     });
+
     navGroups.push({
       label: 'Academics',
       items: [
+        { to: '/sessions', icon: 'SE', label: 'Sessions' },
         { to: '/attendance', icon: 'AT', label: 'Attendance' },
         { to: '/broadsheets', icon: 'BR', label: 'Broadsheets' },
         { to: '/results', icon: 'RE', label: 'Results' },
       ],
     });
+
     navGroups.push({
       label: 'Finance',
       items: [
@@ -57,6 +68,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       label: 'Overview',
       items: [{ to: '/dashboard', icon: 'DB', label: 'Dashboard' }],
     });
+
     navGroups.push({
       label: 'Teaching',
       items: [
@@ -72,6 +84,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       label: 'Overview',
       items: [{ to: '/dashboard', icon: 'DB', label: 'Dashboard' }],
     });
+
     navGroups.push({
       label: 'My Children',
       items: [
@@ -95,29 +108,64 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
 
   return (
     <>
-      {open && <div className="sidebar-overlay" onClick={onClose} aria-hidden="true" />}
-      <aside className={`sidebar ${open ? 'open' : ''}`} role="navigation" aria-label="Main navigation">
+      {open && (
+        <div
+          className="sidebar-overlay"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`sidebar ${open ? 'open' : ''}`}
+        role="navigation"
+        aria-label="Main navigation"
+      >
         <div className="sidebar-header">
-          <div className="sidebar-brand-icon" aria-hidden="true">TC</div>
+          <div className="sidebar-brand-icon sidebar-brand-logo">
+            <img
+              src="/logo.jfif"
+              alt="CEM Total Child School logo"
+            />
+          </div>
+
           <div className="sidebar-brand">
-            <span className="sidebar-brand-name">CEM Total Child</span>
-            <span className="sidebar-brand-sub">School Management</span>
+            <span className="sidebar-brand-name">
+              CEM Total Child
+            </span>
+
+            <span className="sidebar-brand-sub">
+              School Management
+            </span>
           </div>
         </div>
 
         <nav className="sidebar-nav">
           {navGroups.map((group, index) => (
-            <div key={index} className="sidebar-nav-group">
-              <div className="sidebar-nav-label">{group.label}</div>
+            <div
+              key={index}
+              className="sidebar-nav-group"
+            >
+              <div className="sidebar-nav-label">
+                {group.label}
+              </div>
+
               {group.items.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? 'active' : ''}`
+                  }
                   onClick={onClose}
-                  
                 >
-                  <span className="sidebar-link-icon" aria-hidden="true">{item.icon}</span>
+                  <span
+                    className="sidebar-link-icon"
+                    aria-hidden="true"
+                  >
+                    {item.icon}
+                  </span>
+
                   {item.label}
                 </NavLink>
               ))}
@@ -126,8 +174,18 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         </nav>
 
         <div className="sidebar-footer">
-          <NavLink to="/profile" className="sidebar-link" onClick={onClose}>
-            <span className="sidebar-link-icon" aria-hidden="true">PF</span>
+          <NavLink
+            to="/profile"
+            className="sidebar-link"
+            onClick={onClose}
+          >
+            <span
+              className="sidebar-link-icon"
+              aria-hidden="true"
+            >
+              PF
+            </span>
+
             My Profile
           </NavLink>
         </div>

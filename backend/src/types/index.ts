@@ -24,6 +24,7 @@ export interface AuthUser {
   id: string;
   email: string;
   role: UserRole;
+  roles: UserRole[];
   status: AccountStatus;
   created_at: string;
   updated_at: string;

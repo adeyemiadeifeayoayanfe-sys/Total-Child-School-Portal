@@ -56,6 +56,21 @@
   letter-spacing: -0.025em;
   flex-shrink: 0;
 }
+/* School Logo Branding */
+.sidebar-brand-logo {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  overflow: hidden;
+  padding: 4px;
+}
+
+.sidebar-brand-logo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  border-radius: calc(var(--radius-lg) - 4px);
+}
 
 .sidebar-brand {
   display: flex;
@@ -197,6 +212,44 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-4);
+}
+
+/* Header Branding */
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.header-brand-logo {
+  width: 38px;
+  height: 38px;
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+}
+
+.header-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.header-brand-name {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-gray-900);
+  white-space: nowrap;
+}
+
+.header-brand-sub {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin-top: 2px;
+  white-space: nowrap;
 }
 
 .header-menu-btn {
@@ -461,4 +514,12 @@
   .header {
     padding: 0 var(--spacing-3);
   }
+  .header-brand-text {
+  display: none;
+}
+
+.header-brand-logo {
+  width: 34px;
+  height: 34px;
+}
 }

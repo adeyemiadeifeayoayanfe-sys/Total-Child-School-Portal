@@ -21,7 +21,7 @@ export async function createTeacher(input: CreateTeacherInput, createdBy: string
   const { user } = await createUser({
     email: input.email,
     password: input.password,
-    role: 'teacher',
+    roles: ['teacher'],
     first_name: input.first_name,
     last_name: input.last_name,
     phone: input.phone,

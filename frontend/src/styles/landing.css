@@ -789,3 +789,51 @@
     padding: 1.5rem 1rem;
   }
 }
+/* School Logo */
+.landing-logo-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--color-white);
+  padding: 4px;
+}
+
+.landing-logo-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.landing-hero-logo {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 1rem;
+}
+
+.landing-about-logo {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  display: block;
+  margin: auto;
+}
+
+.landing-footer-logo-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--color-white);
+  padding: 3px;
+}
+
+.landing-footer-logo-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
