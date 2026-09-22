@@ -54,6 +54,87 @@ router.get('/', authenticate, authorizeAdmin, async (req: Request, res: Response
 });
 
 /**
+ * GET /api/teachers/my/assignments
+ * Get current teacher's assignments
+ */
+router.get('/my/assignments', authenticate, authorizeTeacher, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get teacher record for current user
+    const { data: teacher } = await supabaseAdmin
+      .from('teachers')
+      .select('id')
+      .eq('user_id', req.authUserId)
+      .single();
+
+    if (!teacher) {
+      throw new NotFoundError('Teacher record not found');
+    }
+
+    const assignments = await getTeacherAssignments(teacher.id);
+    res.json({
+      success: true,
+      data: assignments,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/teachers/my/classes
+ * Get current teacher's classes with students
+ */
+router.get('/my/classes', authenticate, authorizeTeacher, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { data: teacher } = await supabaseAdmin
+      .from('teachers')
+      .select('id')
+      .eq('user_id', req.authUserId)
+      .single();
+
+    if (!teacher) {
+      throw new NotFoundError('Teacher record not found');
+    }
+
+    const { data: classAssignments } = await supabaseAdmin
+      .from('teacher_class_assignments')
+      .select(`
+        class:classes(*),
+        session:academic_sessions(*)
+      `)
+      .eq('teacher_id', teacher.id)
+      .is('unassigned_at', null);
+
+    // Get students for each class
+    const classesWithStudents = [];
+    for (const assignment of (classAssignments || []) as unknown as Array<{
+      class: { id: string };
+      session: { id: string };
+    }>) {
+      const { data: enrollments } = await supabaseAdmin
+        .from('enrollments')
+        .select(`
+          student:students(*)
+        `)
+        .eq('class_id', assignment.class.id)
+        .eq('session_id', assignment.session.id)
+        .is('unenrolled_at', null);
+
+      classesWithStudents.push({
+        ...assignment,
+        students: (enrollments || []).map(e => e.student),
+      });
+    }
+
+    res.json({
+      success: true,
+      data: classesWithStudents,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+/**
  * GET /api/teachers/:id
  * Get teacher details
  */
@@ -167,86 +248,7 @@ router.post('/assign-subject', authenticate, authorizeAdmin, validate(assignTeac
   }
 });
 
-/**
- * GET /api/teachers/my/assignments
- * Get current teacher's assignments
- */
-router.get('/my/assignments', authenticate, authorizeTeacher, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    // Get teacher record for current user
-    const { data: teacher } = await supabaseAdmin
-      .from('teachers')
-      .select('id')
-      .eq('user_id', req.authUserId)
-      .single();
 
-    if (!teacher) {
-      throw new NotFoundError('Teacher record not found');
-    }
-
-    const assignments = await getTeacherAssignments(teacher.id);
-    res.json({
-      success: true,
-      data: assignments,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * GET /api/teachers/my/classes
- * Get current teacher's classes with students
- */
-router.get('/my/classes', authenticate, authorizeTeacher, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { data: teacher } = await supabaseAdmin
-      .from('teachers')
-      .select('id')
-      .eq('user_id', req.authUserId)
-      .single();
-
-    if (!teacher) {
-      throw new NotFoundError('Teacher record not found');
-    }
-
-    const { data: classAssignments } = await supabaseAdmin
-      .from('teacher_class_assignments')
-      .select(`
-        class:classes(*),
-        session:academic_sessions(*)
-      `)
-      .eq('teacher_id', teacher.id)
-      .is('unassigned_at', null);
-
-    // Get students for each class
-    const classesWithStudents = [];
-    for (const assignment of (classAssignments || []) as unknown as Array<{
-      class: { id: string };
-      session: { id: string };
-    }>) {
-      const { data: enrollments } = await supabaseAdmin
-        .from('enrollments')
-        .select(`
-          student:students(*)
-        `)
-        .eq('class_id', assignment.class.id)
-        .eq('session_id', assignment.session.id)
-        .is('unenrolled_at', null);
-
-      classesWithStudents.push({
-        ...assignment,
-        students: (enrollments || []).map(e => e.student),
-      });
-    }
-
-    res.json({
-      success: true,
-      data: classesWithStudents,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
 
 export default router;
+

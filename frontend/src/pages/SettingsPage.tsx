@@ -53,12 +53,23 @@ export default function SettingsPage() {
       const current = sessionList.find((s: any) => s.is_current);
       if (current) {
         setCurrentSessionId(current.id);
-        setTerms(current.terms || []);
-        const currentTerm = (current.terms || []).find((t: any) => t.is_current);
+        const currentTerms = current.terms || [];
+        setTerms(currentTerms);
+
+        const currentTerm = currentTerms.find((t: any) => t.is_current);
+
         if (currentTerm) {
           setCurrentTermId(currentTerm.id);
           setAssessmentStage(currentTerm.assessment_stage || 'classes');
+        } else {
+          setCurrentTermId('');
+          setAssessmentStage('classes');
         }
+      } else {
+        setCurrentSessionId('');
+        setTerms([]);
+        setCurrentTermId('');
+        setAssessmentStage('classes');
       }
     }
 
@@ -482,6 +493,7 @@ export default function SettingsPage() {
     </div>
   );
 }
+
 
 
 

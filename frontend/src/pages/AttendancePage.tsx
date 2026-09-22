@@ -34,6 +34,7 @@ export default function AttendancePage() {
       if (isTeacher) {
         const classList = result.data.map((item: any) => item.class);
         setClasses(classList);
+        if (classList.length === 1) setSelectedClass(classList[0]?.id || '');
       } else {
         setClasses(result.data);
       }
@@ -243,17 +244,30 @@ export default function AttendancePage() {
       </div>
 
       <div className="grid gap-4">
-        <Card title="Select Class" subtitle="Choose a class to view or take attendance">
-          <select
-            className="form-select"
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-          >
-            <option value="">Select a class...</option>
-            {classes.map((cls) => (
-              <option key={cls.id} value={cls.id}>{cls.name}</option>
-            ))}
-          </select>
+        <Card
+          title={classes.length === 1 ? "Assigned Class" : "Select Class"}
+          subtitle={
+            classes.length === 1
+              ? "Your assigned class"
+              : "Choose a class to view or take attendance"
+          }
+        >
+          {classes.length === 1 ? (
+            <div className="form-input bg-gray-50">
+              {classes[0]?.name || "Assigned class"}
+            </div>
+          ) : (
+            <select
+              className="form-select"
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+            >
+              <option value="">Select a class...</option>
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>{cls.name}</option>
+              ))}
+            </select>
+          )}
         </Card>
 
         {selectedClass && (
@@ -276,6 +290,8 @@ export default function AttendancePage() {
     </div>
   );
 }
+
+
 
 
 

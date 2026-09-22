@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // COMMON TYPES
 // ============================================
 
@@ -304,6 +304,9 @@ export interface TeacherDashboardData {
   total_classes: number;
   total_subjects: number;
   pending_broadsheet_count: number;
+  other_assignments?: any[];
+  current_term?: { id: string; name: string; assessment_stage: AssessmentStage; session_id: string } | null;
+  assessment_stage?: AssessmentStage | null;
 }
 
 export interface ParentDashboardData {
@@ -365,5 +368,6 @@ export interface Notification {
   metadata: Record<string, any>;
   created_at: string;
 }
+
 
 

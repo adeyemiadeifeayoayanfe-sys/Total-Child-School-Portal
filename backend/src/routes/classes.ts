@@ -95,7 +95,7 @@ router.get('/:id', authenticate, authorizeAdmin, async (req: Request, res: Respo
         ? supabaseAdmin.from('academic_sessions').select('*').in('id', sessionIds)
         : Promise.resolve({ data: [] }),
       teacherIds.length
-        ? supabaseAdmin.from('teachers').select('*').in('id', teacherIds)
+        ? supabaseAdmin.from('teachers').select('*, user_id').in('id', teacherIds)
         : Promise.resolve({ data: [] }),
       subjectIds.length
         ? supabaseAdmin.from('subjects').select('*').in('id', subjectIds)
@@ -104,7 +104,15 @@ router.get('/:id', authenticate, authorizeAdmin, async (req: Request, res: Respo
 
     const studentMap = new Map((students || []).map((item: any) => [item.id, item]));
     const sessionMap = new Map((sessions || []).map((item: any) => [item.id, item]));
-    const teacherMap = new Map((teachers || []).map((item: any) => [item.id, item]));
+    const teacherUserIds = [...new Set((teachers || []).map((item: any) => item.user_id).filter(Boolean))];
+    const { data: teacherProfiles } = teacherUserIds.length
+      ? await supabaseAdmin.from('profiles').select('*').in('user_id', teacherUserIds)
+      : { data: [] };
+    const teacherProfileMap = new Map((teacherProfiles || []).map((item: any) => [item.user_id, item]));
+    const teacherMap = new Map((teachers || []).map((item: any) => [
+      item.id,
+      { ...item, profile: teacherProfileMap.get(item.user_id) || null }
+    ]));
     const subjectMap = new Map((subjects || []).map((item: any) => [item.id, item]));
 
     const enrichedEnrollments = (enrollments || []).map((item: any) => ({
@@ -274,5 +282,6 @@ router.get('/:id/roster', authenticate, authorizeAdmin, async (req: Request, res
 });
 
 export default router;
+
 
 

@@ -1,4 +1,4 @@
-﻿import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 import { authenticate, authorizeAdmin, authorizeTeacher, authorizeParent } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
@@ -155,60 +155,127 @@ router.get('/teacher', authenticate, authorizeTeacher, async (req: Request, res:
     const { data: classAssignments } = await supabaseAdmin
       .from('teacher_class_assignments')
       .select(`
+        id,
+        class_id,
+        session_id,
         class:classes(*),
         session:academic_sessions(*)
       `)
       .eq('teacher_id', teacher.id)
       .is('unassigned_at', null);
 
-    // Get teacher's subjects
-    const { data: subjectAssignments } = await supabaseAdmin
+    // Direct subject assignments are the teacher's Other Assignments.
+    const { data: directSubjectAssignments } = await supabaseAdmin
       .from('teacher_subject_assignments')
       .select(`
+        id,
+        subject_id,
+        class_id,
+        session_id,
         subject:subjects(*),
-        class:classes(*)
+        class:classes(*),
+        session:academic_sessions(*)
       `)
       .eq('teacher_id', teacher.id)
       .is('unassigned_at', null);
 
-    // Get today's attendance status
+    // Class teachers automatically inherit every subject assigned to their class.
+    const inheritedSubjects: any[] = [];
+
+    for (const assignment of classAssignments || []) {
+      const { data: classSubjects } = await supabaseAdmin
+        .from('class_subject_assignments')
+        .select(`
+          subject_id,
+          class_id,
+          session_id,
+          subject:subjects(*),
+          class:classes(*)
+        `)
+        .eq('class_id', assignment.class_id)
+        .eq('session_id', assignment.session_id);
+
+      for (const classSubject of classSubjects || []) {
+        const duplicate = (directSubjectAssignments || []).some(
+          (item: any) =>
+            item.subject_id === classSubject.subject_id &&
+            item.class_id === classSubject.class_id &&
+            item.session_id === classSubject.session_id
+        );
+
+        if (!duplicate) {
+          inheritedSubjects.push({
+            ...classSubject,
+            assignment_type: 'class_teacher',
+            teacher_class_assignment_id: assignment.id,
+          });
+        }
+      }
+    }
+
+    const effectiveSubjects = [
+      ...(directSubjectAssignments || []).map((item: any) => ({
+        ...item,
+        assignment_type: 'direct',
+      })),
+      ...inheritedSubjects,
+    ];
+
+    // Current term and assessment stage.
+    const { data: currentTerm } = await supabaseAdmin
+      .from('terms')
+      .select(`
+        id,
+        name,
+        assessment_stage,
+        session_id,
+        academic_sessions!inner(is_current)
+      `)
+      .eq('is_current', true)
+      .eq('academic_sessions.is_current', true)
+      .maybeSingle();
+
+    // Get today's attendance status.
     let todayAttendanceTaken = false;
     const firstAssignment = asRecord((classAssignments || [])[0] as any);
     const firstClass = firstAssignment ? asRecord(firstAssignment.class as any) : null;
+
     if (firstClass) {
-      const firstClassId = firstClass.id;
       const { data: todayAttendance } = await supabaseAdmin
         .from('attendance')
         .select('id')
-        .eq('class_id', firstClassId)
+        .eq('class_id', firstClass.id)
         .eq('attendance_date', today)
         .limit(1);
 
       todayAttendanceTaken = Boolean(todayAttendance && todayAttendance.length > 0);
     }
 
-    // Get pending broadsheets
+    // Get pending broadsheets.
     const { data: pendingBroadsheets } = await supabaseAdmin
       .from('broadsheet_submissions')
       .select('*')
       .eq('teacher_id', teacher.id)
       .in('status', ['draft', 'returned']);
 
-    // Unread notifications
     const { count: unreadNotifications } = await supabaseAdmin
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', req.authUserId)
       .eq('is_read', false);
+
     res.json({
       success: true,
       data: {
         classes: classAssignments || [],
-        subjects: subjectAssignments || [],
+        subjects: effectiveSubjects,
+        other_assignments: directSubjectAssignments || [],
+        current_term: currentTerm || null,
+        assessment_stage: currentTerm?.assessment_stage || null,
         today_attendance_taken: todayAttendanceTaken,
         pending_broadsheets: pendingBroadsheets || [],
         total_classes: classAssignments?.length || 0,
-        total_subjects: subjectAssignments?.length || 0,
+        total_subjects: effectiveSubjects.length,
         pending_broadsheet_count: pendingBroadsheets?.length || 0,
         unread_notifications: unreadNotifications || 0,
       },
@@ -318,6 +385,7 @@ router.get('/parent', authenticate, authorizeParent, async (req: Request, res: R
 });
 
 export default router;
+
 
 
 

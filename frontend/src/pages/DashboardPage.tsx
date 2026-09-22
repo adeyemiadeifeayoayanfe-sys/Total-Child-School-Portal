@@ -286,7 +286,7 @@ export default function DashboardPage() {
         <div className="page-header">
           <div>
             <h1 className="page-title">
-              Good morning, {user?.profile?.first_name || 'Teacher'}!
+              Good morning, {[user?.profile?.first_name, user?.profile?.last_name].filter(Boolean).join(' ') || 'Teacher'}!
             </h1>
             <p className="page-description">
               Here&apos;s your teaching overview for today.
@@ -294,6 +294,35 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        <div className="dashboard-grid">
+          <div className="stat-card">
+            <div className="stat-icon stat-icon-blue">ST</div>
+            <div className="stat-content">
+              <h3>
+                {data.assessment_stage
+                  ? data.assessment_stage === 'first_test'
+                    ? '1st Test'
+                    : data.assessment_stage === 'second_test'
+                      ? '2nd Test'
+                      : data.assessment_stage === 'third_test'
+                        ? '3rd Test'
+                        : data.assessment_stage === 'examination'
+                          ? 'Examination'
+                          : 'Classes'
+                  : 'Not Set'}
+              </h3>
+              <p>Active Assessment Stage</p>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon stat-icon-green">TM</div>
+            <div className="stat-content">
+              <h3>{data.current_term?.name || 'Not Set'}</h3>
+              <p>Current Term</p>
+            </div>
+          </div>
+        </div>
         <div className="dashboard-grid">
           <div className="stat-card">
             <div className="stat-icon stat-icon-blue">CL</div>
@@ -368,6 +397,28 @@ export default function DashboardPage() {
           </button>
         </div>
 
+        {Array.isArray(data.other_assignments) && data.other_assignments.length > 0 && (
+          <Card title="Other Assignments" className="no-print">
+            <div className="table-container">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Class</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.other_assignments.map((assignment: any, index: number) => (
+                    <tr key={assignment?.id || index}>
+                      <td>{assignment?.subject?.name || 'Unnamed subject'}</td>
+                      <td>{assignment?.class?.name || 'Unnamed class'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
         {Array.isArray(data.classes) && data.classes.length > 0 && (
           <Card title="My Classes" className="no-print">
             <div className="table-container">
@@ -545,4 +596,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
 

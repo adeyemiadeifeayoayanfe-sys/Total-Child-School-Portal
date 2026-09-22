@@ -266,17 +266,17 @@ export async function assignTeacherToSubject(
 }
 
 export async function getTeacherAssignments(teacherId: string) {
-  const { data: teacher } = await supabaseAdmin
+  const { data: teacher, error: teacherError } = await supabaseAdmin
     .from('teachers')
     .select('*')
     .eq('id', teacherId)
     .single();
 
-  if (!teacher) {
+  if (teacherError || !teacher) {
     throw new NotFoundError('Teacher not found');
   }
 
-  const { data: classAssignments } = await supabaseAdmin
+  const { data: classAssignments, error: classError } = await supabaseAdmin
     .from('teacher_class_assignments')
     .select(`
       *,
@@ -286,7 +286,11 @@ export async function getTeacherAssignments(teacherId: string) {
     .eq('teacher_id', teacherId)
     .is('unassigned_at', null);
 
-  const { data: subjectAssignments } = await supabaseAdmin
+  if (classError) {
+    throw new AppError('Failed to load teacher class assignments', 500);
+  }
+
+  const { data: directAssignments, error: directError } = await supabaseAdmin
     .from('teacher_subject_assignments')
     .select(`
       *,
@@ -297,12 +301,56 @@ export async function getTeacherAssignments(teacherId: string) {
     .eq('teacher_id', teacherId)
     .is('unassigned_at', null);
 
+  if (directError) {
+    throw new AppError('Failed to load teacher subject assignments', 500);
+  }
+
+  const inheritedAssignments: any[] = [];
+
+  for (const classAssignment of classAssignments || []) {
+    const { data: classSubjects, error: classSubjectError } = await supabaseAdmin
+      .from('class_subject_assignments')
+      .select(`
+        *,
+        subject:subjects(*),
+        class:classes(*),
+        session:academic_sessions(*)
+      `)
+      .eq('class_id', classAssignment.class_id)
+      .eq('session_id', classAssignment.session_id);
+
+    if (classSubjectError) {
+      throw new AppError('Failed to load class subjects', 500);
+    }
+
+    for (const classSubject of classSubjects || []) {
+      const alreadyDirect = (directAssignments || []).some(
+        (assignment: any) =>
+          assignment.subject_id === classSubject.subject_id &&
+          assignment.class_id === classSubject.class_id &&
+          assignment.session_id === classSubject.session_id
+      );
+
+      if (!alreadyDirect) {
+        inheritedAssignments.push({
+          ...classSubject,
+          assignment_type: 'class_teacher',
+          teacher_class_assignment_id: classAssignment.id,
+        });
+      }
+    }
+  }
+
   return {
     teacher,
     classAssignments: classAssignments || [],
-    subjectAssignments: subjectAssignments || [],
+    subjectAssignments: [
+      ...(directAssignments || []).map((assignment: any) => ({
+        ...assignment,
+        assignment_type: 'direct',
+      })),
+      ...inheritedAssignments,
+    ],
+    otherAssignments: directAssignments || [],
   };
 }
-
-
-

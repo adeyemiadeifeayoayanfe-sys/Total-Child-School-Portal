@@ -46,8 +46,9 @@ router.get(
     try {
       const { data, error } = await supabaseAdmin
         .from('terms')
-        .select('*')
+        .select('*, academic_sessions!inner(is_current)')
         .eq('is_current', true)
+        .eq('academic_sessions.is_current', true)
         .maybeSingle();
       if (error) {
         res.status(500).json({ error: error.message });
@@ -243,6 +244,7 @@ router.post(
   },
 );
 export default router;
+
 
 
 

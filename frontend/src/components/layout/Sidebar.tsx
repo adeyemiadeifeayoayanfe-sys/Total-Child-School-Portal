@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -75,6 +75,13 @@ export default function Sidebar({
         { to: '/attendance', icon: 'AT', label: 'Attendance' },
         { to: '/scores', icon: 'SC', label: 'Score Entry' },
         { to: '/broadsheets', icon: 'BR', label: 'Broadsheets' },
+      ],
+    });
+
+    navGroups.push({
+      label: 'Other Assignments',
+      items: [
+        { to: '/scores', icon: 'OA', label: 'Assigned Subjects' },
       ],
     });
   }
@@ -206,4 +213,5 @@ export default function Sidebar({
     </>
   );
 }
+
 

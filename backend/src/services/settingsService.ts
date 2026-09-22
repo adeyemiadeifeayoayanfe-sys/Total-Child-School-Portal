@@ -136,7 +136,7 @@ export async function setCurrentTerm(
   const { error: clearError } = await supabaseAdmin
     .from('terms')
     .update({ is_current: false })
-    .neq('id', '00000000-0000-0000-0000-000000000000');
+    .eq('session_id', term.session_id);
   if (clearError) {
     throw new AppError('Failed to clear current term', 500);
   }
@@ -169,8 +169,10 @@ export async function setAssessmentStage(
   }
   const { data: term } = await supabaseAdmin
     .from('terms')
-    .select('*')
+    .select('*, academic_sessions!inner(is_current)')
     .eq('id', termId)
+    .eq('is_current', true)
+    .eq('academic_sessions.is_current', true)
     .single();
   if (!term) {
     throw new NotFoundError('Term not found');
@@ -295,3 +297,5 @@ export async function deleteGradingRule(
   });
   return { success: true };
 }
+
+
