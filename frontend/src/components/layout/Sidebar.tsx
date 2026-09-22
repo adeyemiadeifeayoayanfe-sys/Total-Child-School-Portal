@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -95,7 +95,20 @@ export default function Sidebar({
     });
   }
 
-  if (role === 'super_admin') {
+  if (
+    role === 'super_admin' ||
+    role === 'admin' ||
+    role === 'teacher' ||
+    role === 'parent'
+  ) {
+    navGroups.push({
+      label: 'Communication',
+      items: [
+        { to: '/notifications', icon: 'NT', label: 'Notifications' },
+        { to: '/announcements', icon: 'AN', label: 'Announcements' },
+      ],
+    });
+  }  if (role === 'super_admin') {
     navGroups.push({
       label: 'System',
       items: [
@@ -193,3 +206,4 @@ export default function Sidebar({
     </>
   );
 }
+

@@ -19,6 +19,7 @@ import {
   changePasswordSchema,
   resetPasswordSchema,
   createUserSchema,
+  updateUserRolesSchema,
 } from '../validators/auth';
 import {
   createUser,
@@ -108,7 +109,6 @@ async function ensureAppUserForAuthUser(
     );
   }
 
-  // Create the multi-role record for the bootstrap super admin.
   const { error: roleError } = await supabaseAdmin
     .from('user_roles')
     .upsert(
@@ -128,7 +128,6 @@ async function ensureAppUserForAuthUser(
     );
   }
 
-  // Create profile.
   const { error: profileError } =
     await supabaseAdmin.from('profiles').upsert(
       {
@@ -148,7 +147,6 @@ async function ensureAppUserForAuthUser(
     );
   }
 
-  // Reload repaired user.
   const {
     data: repairedUser,
     error: repairedLookupError,
@@ -175,15 +173,6 @@ async function ensureAppUserForAuthUser(
 
 /**
  * POST /api/auth/login
- *
- * Login using Supabase Auth.
- *
- * Returns:
- * - session
- * - user
- * - primary role
- * - all assigned roles
- * - role-specific data
  */
 router.post(
   '/login',
@@ -221,17 +210,12 @@ router.post(
         );
       }
 
-      // Update last login.
       await supabaseAdmin
         .from('users')
         .update({
           last_login_at: new Date().toISOString(),
         })
         .eq('id', user.id);
-
-      // ----------------------------------------
-      // Load ALL assigned roles
-      // ----------------------------------------
 
       const { data: userRoles, error: rolesError } =
         await supabaseAdmin
@@ -251,15 +235,9 @@ router.post(
           (item: { role: UserRole }) => item.role
         ) || [];
 
-      // Backward compatibility for users created before
-      // the multi-role migration.
       if (roles.length === 0) {
         roles.push(user.role as UserRole);
       }
-
-      // ----------------------------------------
-      // Load role-specific records
-      // ----------------------------------------
 
       let teacher = null;
       let parent = null;
@@ -286,15 +264,6 @@ router.post(
         parent = parentData;
       }
 
-      /*
-       * role_data is retained for compatibility.
-       *
-       * The frontend should primarily use:
-       *
-       * user.roles
-       *
-       * to determine which portals are available.
-       */
       let roleData = null;
 
       if (teacher) {
@@ -438,8 +407,6 @@ router.post(
 
 /**
  * GET /api/auth/me
- *
- * Returns the authenticated user and all assigned roles.
  */
 router.get(
   '/me',
@@ -458,17 +425,6 @@ router.get(
 
 /**
  * POST /api/auth/users
- *
- * Create a new user with one or more roles.
- *
- * Example:
- * {
- *   "email": "teacher@example.com",
- *   "password": "password123",
- *   "roles": ["teacher", "admin"],
- *   "first_name": "John",
- *   "last_name": "Doe"
- * }
  */
 router.post(
   '/users',
@@ -494,17 +450,6 @@ router.post(
 
 /**
  * GET /api/auth/users
- *
- * Returns every user with ALL assigned roles.
- *
- * Optional query parameters:
- *
- * ?role=teacher
- * ?status=active
- * ?search=john
- *
- * Role filtering checks ALL assigned roles,
- * not just users.role.
  */
 router.get(
   '/users',
@@ -522,7 +467,6 @@ router.get(
           user_roles:user_roles!user_roles_user_id_fkey(role)
         `);
 
-      // Status filtering can be handled directly by Supabase.
       if (status) {
         query = query.eq(
           'status',
@@ -549,11 +493,6 @@ router.get(
         );
       }
 
-      // ----------------------------------------
-      // Convert database role records into
-      // a simple roles array.
-      // ----------------------------------------
-
       let users = (data || []).map((user) => {
         const roles: UserRole[] =
           user.user_roles?.map(
@@ -561,7 +500,6 @@ router.get(
               item.role
           ) || [];
 
-        // Backward compatibility.
         if (roles.length === 0) {
           roles.push(user.role as UserRole);
         }
@@ -573,10 +511,6 @@ router.get(
           user_roles: undefined,
         };
       });
-
-      // ----------------------------------------
-      // Search
-      // ----------------------------------------
 
       if (search) {
         const searchTerm = String(search)
@@ -605,10 +539,6 @@ router.get(
         }
       }
 
-      // ----------------------------------------
-      // Role filtering
-      // ----------------------------------------
-
       if (role) {
         const requestedRole =
           String(role) as UserRole;
@@ -630,69 +560,20 @@ router.get(
 
 /**
  * PUT /api/auth/users/:id/roles
- *
- * Replace the complete role set for a user.
- *
- * Example:
- *
- * {
- *   "roles": ["admin", "teacher"]
- * }
- *
- * The first role becomes the primary role in users.role.
  */
 router.put(
   '/users/:id/roles',
   authenticate,
   authorizeAdmin,
+  validate(updateUserRolesSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = req.params.id;
       const { roles } = req.body;
 
-      // ----------------------------------------
-      // Validate request
-      // ----------------------------------------
-
-      if (!Array.isArray(roles)) {
-        throw new AppError(
-          'roles must be an array',
-          400
-        );
-      }
-
-      if (roles.length === 0) {
-        throw new AppError(
-          'A user must have at least one role',
-          400
-        );
-      }
-
-      const validRoles: UserRole[] = [
-        'admin',
-        'teacher',
-        'parent',
-      ];
-
-      const invalidRoles = roles.filter(
-        (role: unknown) =>
-          !validRoles.includes(role as UserRole)
-      );
-
-      if (invalidRoles.length > 0) {
-        throw new AppError(
-          'Invalid role supplied. Allowed roles are admin, teacher, and parent.',
-          400
-        );
-      }
-
-      const uniqueRoles = [
-        ...new Set(roles as UserRole[]),
-      ];
-
       const user = await updateUserRoles(
         userId,
-        uniqueRoles,
+        roles,
         req.authUserId!
       );
 

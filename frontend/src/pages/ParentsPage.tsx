@@ -7,189 +7,109 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
-
+type ParentForm = {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  address: string;
+  occupation: string;
+  relationship_to_student: string;
+  alternate_phone: string;
+};
+const emptyForm: ParentForm = {
+  first_name: '',
+  last_name: '',
+  phone: '',
+  address: '',
+  occupation: '',
+  relationship_to_student: '',
+  alternate_phone: '',
+};
 export default function ParentsPage() {
   const { call } = useApi();
   const { showToast } = useToast();
-
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const [showAssignChildrenModal, setShowAssignChildrenModal] =
-    useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
-  const [admissionNumbers, setAdmissionNumbers] = useState('');
-  const [assigningChildren, setAssigningChildren] = useState(false);
-  const [isPrimary, setIsPrimary] = useState(false);
-
-  const [formData, setFormData] = useState({
+  const [submitting, setSubmitting] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [createForm, setCreateForm] = useState({
     email: '',
     password: '',
-    first_name: '',
-    last_name: '',
-    phone: '',
-    address: '',
-    occupation: '',
-    relationship_to_student: '',
+    ...emptyForm,
   });
-
+  const [editForm, setEditForm] = useState<ParentForm>(emptyForm);
+  const [admissionNumbers, setAdmissionNumbers] = useState('');
+  const [isPrimary, setIsPrimary] = useState(false);
   const fetchParents = useCallback(async () => {
     setLoading(true);
-
-    const result = await call('/parents');
-
+    const params = new URLSearchParams();
+    if (search.trim()) {
+      params.set('search', search.trim());
+    }
+    if (statusFilter !== 'all') {
+      params.set('is_active', statusFilter);
+    }
+    const query = params.toString();
+    const result = await call(`/parents${query ? `?${query}` : ''}`);
     if (result.success && result.data) {
       setParents(result.data);
+    } else {
+      showToast('error', result.error || 'Failed to load parents');
     }
-
     setLoading(false);
-  }, [call]);
-
+  }, [call, search, statusFilter, showToast]);
   useEffect(() => {
-    fetchParents();
+    const timer = window.setTimeout(() => {
+      fetchParents();
+    }, 250);
+    return () => window.clearTimeout(timer);
   }, [fetchParents]);
-
-  const resetForm = () => {
-    setFormData({
+  const resetCreateForm = () => {
+    setCreateForm({
       email: '',
       password: '',
-      first_name: '',
-      last_name: '',
-      phone: '',
-      address: '',
-      occupation: '',
-      relationship_to_student: '',
+      ...emptyForm,
     });
-
     setAdmissionNumbers('');
     setIsPrimary(false);
   };
-
+  const openEdit = (parent: Parent) => {
+    setSelectedParent(parent);
+    setEditForm({
+      first_name: parent.profile?.first_name || '',
+      last_name: parent.profile?.last_name || '',
+      phone: parent.profile?.phone || '',
+      address: parent.profile?.address || '',
+      occupation: parent.occupation || '',
+      relationship_to_student:
+        parent.relationship_to_student || '',
+      alternate_phone: '',
+    });
+    setShowEditModal(true);
+  };
   const handleCreate = async () => {
     if (
-      !formData.email ||
-      !formData.password ||
-      !formData.first_name ||
-      !formData.last_name
+      !createForm.email ||
+      !createForm.password ||
+      !createForm.first_name ||
+      !createForm.last_name
     ) {
       showToast('error', 'Please fill in all required fields');
       return;
     }
-
-    /*
-     * Convert comma-separated admission numbers into
-     * an array while keeping them as strings.
-     *
-     * Example:
-     * "0070, 0123, 0145"
-     *
-     * becomes:
-     * ["0070", "0123", "0145"]
-     */
     const numbers = admissionNumbers
       .split(',')
-      .map((number) => number.trim())
+      .map((value) => value.trim())
       .filter(Boolean);
-
-    /*
-     * Admission numbers must be exactly four digits.
-     * This also preserves leading zeros.
-     */
     const invalid = numbers.filter(
-      (number) => !/^\d{4}$/.test(number)
+      (value) => !/^\d{4}$/.test(value)
     );
-
-    if (invalid.length > 0) {
-      showToast(
-        'error',
-        `Invalid admission number(s): ${invalid.join(', ')}`
-      );
-      return;
-    }
-
-    /*
-     * Remove duplicates.
-     */
-    const uniqueNumbers = [...new Set(numbers)];
-
-    setSubmitting(true);
-
-    const result = await call('/parents', {
-      method: 'POST',
-      body: {
-        ...formData,
-        admission_numbers: uniqueNumbers,
-        is_primary: isPrimary,
-      },
-    });
-
-    if (result.success) {
-      const childrenCount =
-        result.data?.children_count ??
-        uniqueNumbers.length;
-
-      let message = 'Parent account created successfully';
-
-      if (childrenCount > 0) {
-        message += ` with ${childrenCount} child${
-          childrenCount === 1 ? '' : 'ren'
-        } assigned`;
-      }
-
-      showToast('success', message);
-
-      setShowCreateModal(false);
-      resetForm();
-      fetchParents();
-    } else {
-      showToast(
-        'error',
-        result.error || 'Failed to create parent'
-      );
-    }
-
-    setSubmitting(false);
-  };
-
-  const openAssignChildrenModal = (parent: Parent) => {
-    setSelectedParent(parent);
-    setAdmissionNumbers('');
-    setIsPrimary(false);
-    setShowAssignChildrenModal(true);
-  };
-
-  const closeAssignChildrenModal = () => {
-    if (assigningChildren) return;
-
-    setShowAssignChildrenModal(false);
-    setSelectedParent(null);
-    setAdmissionNumbers('');
-    setIsPrimary(false);
-  };
-
-  const handleAssignChildren = async () => {
-    if (!selectedParent) return;
-
-    const numbers = admissionNumbers
-      .split(',')
-      .map((number) => number.trim())
-      .filter(Boolean);
-
-    if (!numbers.length) {
-      showToast(
-        'error',
-        'Enter at least one admission number'
-      );
-      return;
-    }
-
-    const invalid = numbers.filter(
-      (number) => !/^\d{4}$/.test(number)
-    );
-
     if (invalid.length) {
       showToast(
         'error',
@@ -197,43 +117,93 @@ export default function ParentsPage() {
       );
       return;
     }
-
-    const uniqueNumbers = [...new Set(numbers)];
-
-    setAssigningChildren(true);
-
+    setSubmitting(true);
+    const result = await call('/parents', {
+      method: 'POST',
+      body: {
+        ...createForm,
+        admission_numbers: [...new Set(numbers)],
+        is_primary: isPrimary,
+      },
+    });
+    if (result.success) {
+      showToast('success', 'Parent account created successfully');
+      setShowCreateModal(false);
+      resetCreateForm();
+      fetchParents();
+    } else {
+      showToast(
+        'error',
+        result.error || 'Failed to create parent'
+      );
+    }
+    setSubmitting(false);
+  };
+  const handleEdit = async () => {
+    if (!selectedParent) return;
+    if (!editForm.first_name || !editForm.last_name) {
+      showToast('error', 'First and last name are required');
+      return;
+    }
+    setSubmitting(true);
+    const result = await call(`/parents/${selectedParent.id}`, {
+      method: 'PUT',
+      body: editForm,
+    });
+    if (result.success) {
+      showToast('success', 'Parent updated successfully');
+      setShowEditModal(false);
+      setSelectedParent(null);
+      fetchParents();
+    } else {
+      showToast(
+        'error',
+        result.error || 'Failed to update parent'
+      );
+    }
+    setSubmitting(false);
+  };
+  const openAssign = (parent: Parent) => {
+    setSelectedParent(parent);
+    setAdmissionNumbers('');
+    setIsPrimary(false);
+    setShowAssignModal(true);
+  };
+  const handleAssign = async () => {
+    if (!selectedParent) return;
+    const numbers = admissionNumbers
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const invalid = numbers.filter(
+      (value) => !/^\d{4}$/.test(value)
+    );
+    if (!numbers.length) {
+      showToast('error', 'Enter at least one admission number');
+      return;
+    }
+    if (invalid.length) {
+      showToast(
+        'error',
+        `Invalid admission number(s): ${invalid.join(', ')}`
+      );
+      return;
+    }
+    setAssigning(true);
     const result = await call(
       '/students/assign-parent-by-admission',
       {
         method: 'POST',
         body: {
           parent_id: selectedParent.id,
-          admission_numbers: uniqueNumbers,
+          admission_numbers: [...new Set(numbers)],
           is_primary: isPrimary,
         },
       }
     );
-
     if (result.success) {
-      const assignedCount =
-        result.data?.count ??
-        result.data?.assigned?.length ??
-        uniqueNumbers.length;
-
-      const alreadyCount =
-        result.data?.already_assigned?.length ?? 0;
-
-      let message = `${assignedCount} child${
-        assignedCount === 1 ? '' : 'ren'
-      } assigned successfully`;
-
-      if (alreadyCount > 0) {
-        message += `. ${alreadyCount} already assigned.`;
-      }
-
-      showToast('success', message);
-
-      setShowAssignChildrenModal(false);
+      showToast('success', 'Children assigned successfully');
+      setShowAssignModal(false);
       setSelectedParent(null);
       setAdmissionNumbers('');
       setIsPrimary(false);
@@ -243,54 +213,48 @@ export default function ParentsPage() {
         result.error || 'Failed to assign children'
       );
     }
-
-    setAssigningChildren(false);
+    setAssigning(false);
   };
-
-  const enteredNumbers = admissionNumbers
-    .split(',')
-    .map((number) => number.trim())
-    .filter(Boolean);
-
   const columns = [
     {
       key: 'name',
       header: 'Name',
       render: (parent: Parent) => (
-        <span className="font-semibold">
-          {parent.profile?.first_name}{' '}
-          {parent.profile?.last_name}
-        </span>
+        <div>
+          <div className="font-semibold">
+            {parent.profile?.first_name || ''}{' '}
+            {parent.profile?.last_name || ''}
+          </div>
+          <div className="text-xs text-gray-500">
+            {parent.relationship_to_student || 'Parent'}
+          </div>
+        </div>
       ),
     },
     {
       key: 'email',
       header: 'Email',
       render: (parent: Parent) =>
-        parent.user?.email || parent.user_id,
+        parent.user?.email || '-',
     },
     {
       key: 'phone',
       header: 'Phone',
       render: (parent: Parent) =>
-        parent.profile?.phone || '—',
+        parent.profile?.phone || '-',
     },
     {
       key: 'occupation',
       header: 'Occupation',
       render: (parent: Parent) =>
-        parent.occupation || '—',
+        parent.occupation || '-',
     },
     {
       key: 'status',
       header: 'Status',
       render: (parent: Parent) => (
         <StatusBadge
-          status={
-            parent.is_active
-              ? 'active'
-              : 'inactive'
-          }
+          status={parent.is_active ? 'active' : 'inactive'}
         />
       ),
     },
@@ -298,19 +262,25 @@ export default function ParentsPage() {
       key: 'actions',
       header: 'Actions',
       render: (parent: Parent) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            openAssignChildrenModal(parent)
-          }
-        >
-          Assign Children
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openEdit(parent)}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openAssign(parent)}
+          >
+            Assign Children
+          </Button>
+        </div>
       ),
     },
   ];
-
   return (
     <div>
       <div className="page-header">
@@ -320,12 +290,11 @@ export default function ParentsPage() {
             Manage parent accounts and child assignments
           </p>
         </div>
-
         <div className="page-actions">
           <Button
             variant="primary"
             onClick={() => {
-              resetForm();
+              resetCreateForm();
               setShowCreateModal(true);
             }}
           >
@@ -333,7 +302,25 @@ export default function ParentsPage() {
           </Button>
         </div>
       </div>
-
+      <Card className="mb-4">
+        <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+          <input
+            className="form-input"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search parents..."
+          />
+          <select
+            className="form-input"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option value="all">All parents</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+      </Card>
       <Card>
         <Table
           columns={columns}
@@ -342,249 +329,138 @@ export default function ParentsPage() {
           emptyMessage="No parents found"
         />
       </Card>
-
-      {/* Create Parent Modal */}
       <Modal
         open={showCreateModal}
         onClose={() => {
-          if (!submitting) {
-            setShowCreateModal(false);
-          }
+          if (!submitting) setShowCreateModal(false);
         }}
         title="Create Parent Account"
       >
         <div className="grid gap-4">
-          <div className="form-group">
-            <label className="form-label">
-              Email Address
-            </label>
-
-            <input
-              type="email"
-              className="form-input"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  email: e.target.value,
-                })
-              }
-              placeholder="parent@example.com"
-              disabled={submitting}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              Temporary Password
-            </label>
-
-            <input
-              type="password"
-              className="form-input"
-              value={formData.password}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  password: e.target.value,
-                })
-              }
-              placeholder="Min 8 characters"
-              disabled={submitting}
-            />
-
-            <p className="form-hint">
-              Parent will be prompted to change on first login.
-            </p>
-          </div>
-
+          <input
+            className="form-input"
+            type="email"
+            placeholder="Email address"
+            value={createForm.email}
+            onChange={(event) =>
+              setCreateForm({
+                ...createForm,
+                email: event.target.value,
+              })
+            }
+            disabled={submitting}
+          />
+          <input
+            className="form-input"
+            type="password"
+            placeholder="Temporary password"
+            value={createForm.password}
+            onChange={(event) =>
+              setCreateForm({
+                ...createForm,
+                password: event.target.value,
+              })
+            }
+            disabled={submitting}
+          />
           <div className="grid grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="form-label">
-                First Name
-              </label>
-
-              <input
-                className="form-input"
-                value={formData.first_name}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    first_name: e.target.value,
-                  })
-                }
-                disabled={submitting}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                Last Name
-              </label>
-
-              <input
-                className="form-input"
-                value={formData.last_name}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    last_name: e.target.value,
-                  })
-                }
-                disabled={submitting}
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              Phone
-            </label>
-
             <input
               className="form-input"
-              value={formData.phone}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  phone: e.target.value,
+              placeholder="First name"
+              value={createForm.first_name}
+              onChange={(event) =>
+                setCreateForm({
+                  ...createForm,
+                  first_name: event.target.value,
                 })
               }
-              placeholder="Phone number"
+              disabled={submitting}
+            />
+            <input
+              className="form-input"
+              placeholder="Last name"
+              value={createForm.last_name}
+              onChange={(event) =>
+                setCreateForm({
+                  ...createForm,
+                  last_name: event.target.value,
+                })
+              }
               disabled={submitting}
             />
           </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              Address
-            </label>
-
-            <textarea
-              className="form-textarea"
-              rows={2}
-              value={formData.address}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  address: e.target.value,
-                })
-              }
-              placeholder="Home address"
-              disabled={submitting}
-            />
-          </div>
-
+          <input
+            className="form-input"
+            placeholder="Phone"
+            value={createForm.phone}
+            onChange={(event) =>
+              setCreateForm({
+                ...createForm,
+                phone: event.target.value,
+              })
+            }
+            disabled={submitting}
+          />
+          <textarea
+            className="form-textarea"
+            rows={2}
+            placeholder="Address"
+            value={createForm.address}
+            onChange={(event) =>
+              setCreateForm({
+                ...createForm,
+                address: event.target.value,
+              })
+            }
+            disabled={submitting}
+          />
           <div className="grid grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="form-label">
-                Occupation
-              </label>
-
-              <input
-                className="form-input"
-                value={formData.occupation}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    occupation: e.target.value,
-                  })
-                }
-                placeholder="e.g., Engineer"
-                disabled={submitting}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                Relationship to Student
-              </label>
-
-              <input
-                className="form-input"
-                value={
-                  formData.relationship_to_student
-                }
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    relationship_to_student:
-                      e.target.value,
-                  })
-                }
-                placeholder="e.g., Father, Mother, Guardian"
-                disabled={submitting}
-              />
-            </div>
+            <input
+              className="form-input"
+              placeholder="Occupation"
+              value={createForm.occupation}
+              onChange={(event) =>
+                setCreateForm({
+                  ...createForm,
+                  occupation: event.target.value,
+                })
+              }
+              disabled={submitting}
+            />
+            <input
+              className="form-input"
+              placeholder="Relationship to student"
+              value={createForm.relationship_to_student}
+              onChange={(event) =>
+                setCreateForm({
+                  ...createForm,
+                  relationship_to_student: event.target.value,
+                })
+              }
+              disabled={submitting}
+            />
           </div>
-
-          {/* Children during parent creation */}
-          <div className="border-t pt-4">
-            <div className="mb-3">
-              <h3 className="font-semibold">
-                Assign Children
-              </h3>
-
-              <p className="form-hint">
-                You can assign existing students to this
-                parent now. This is optional.
-              </p>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                Student Admission Number(s)
-              </label>
-
-              <textarea
-                className="form-textarea"
-                rows={3}
-                value={admissionNumbers}
-                onChange={(e) =>
-                  setAdmissionNumbers(
-                    e.target.value
-                  )
-                }
-                placeholder="0070, 0123, 0145"
-                disabled={submitting}
-              />
-
-              <p className="form-hint">
-                Enter one or more admission numbers separated
-                by commas. Leading zeros are preserved.
-                Leave empty if the parent has no children to
-                assign yet.
-              </p>
-
-              {enteredNumbers.length > 0 && (
-                <p className="mt-1 text-sm text-gray-500">
-                  {enteredNumbers.length}{' '}
-                  {enteredNumbers.length === 1
-                    ? 'admission number'
-                    : 'admission numbers'}{' '}
-                  entered
-                </p>
-              )}
-            </div>
-
-            <label className="flex items-center gap-2 cursor-pointer mt-3">
-              <input
-                type="checkbox"
-                checked={isPrimary}
-                onChange={(e) =>
-                  setIsPrimary(
-                    e.target.checked
-                  )
-                }
-                disabled={submitting}
-              />
-
-              <span className="text-sm">
-                Mark as primary parent for these children
-              </span>
-            </label>
-          </div>
-
+          <textarea
+            className="form-textarea"
+            rows={3}
+            placeholder="Admission numbers: 0070, 0123"
+            value={admissionNumbers}
+            onChange={(event) =>
+              setAdmissionNumbers(event.target.value)
+            }
+            disabled={submitting}
+          />
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={isPrimary}
+              onChange={(event) =>
+                setIsPrimary(event.target.checked)
+              }
+              disabled={submitting}
+            />
+            Mark assigned children as primary parent
+          </label>
           <Button
             variant="primary"
             onClick={handleCreate}
@@ -594,89 +470,146 @@ export default function ParentsPage() {
           </Button>
         </div>
       </Modal>
-
-      {/* Assign Children to Existing Parent Modal */}
       <Modal
-        open={showAssignChildrenModal}
-        onClose={closeAssignChildrenModal}
+        open={showEditModal}
+        onClose={() => {
+          if (!submitting) setShowEditModal(false);
+        }}
+        title="Edit Parent"
+      >
+        <div className="grid gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <input
+              className="form-input"
+              placeholder="First name"
+              value={editForm.first_name}
+              onChange={(event) =>
+                setEditForm({
+                  ...editForm,
+                  first_name: event.target.value,
+                })
+              }
+              disabled={submitting}
+            />
+            <input
+              className="form-input"
+              placeholder="Last name"
+              value={editForm.last_name}
+              onChange={(event) =>
+                setEditForm({
+                  ...editForm,
+                  last_name: event.target.value,
+                })
+              }
+              disabled={submitting}
+            />
+          </div>
+          <input
+            className="form-input"
+            placeholder="Phone"
+            value={editForm.phone}
+            onChange={(event) =>
+              setEditForm({
+                ...editForm,
+                phone: event.target.value,
+              })
+            }
+            disabled={submitting}
+          />
+          <textarea
+            className="form-textarea"
+            rows={2}
+            placeholder="Address"
+            value={editForm.address}
+            onChange={(event) =>
+              setEditForm({
+                ...editForm,
+                address: event.target.value,
+              })
+            }
+            disabled={submitting}
+          />
+          <input
+            className="form-input"
+            placeholder="Occupation"
+            value={editForm.occupation}
+            onChange={(event) =>
+              setEditForm({
+                ...editForm,
+                occupation: event.target.value,
+              })
+            }
+            disabled={submitting}
+          />
+          <input
+            className="form-input"
+            placeholder="Relationship to student"
+            value={editForm.relationship_to_student}
+            onChange={(event) =>
+              setEditForm({
+                ...editForm,
+                relationship_to_student: event.target.value,
+              })
+            }
+            disabled={submitting}
+          />
+          <Button
+            variant="primary"
+            onClick={handleEdit}
+            loading={submitting}
+          >
+            Save Changes
+          </Button>
+        </div>
+      </Modal>
+      <Modal
+        open={showAssignModal}
+        onClose={() => {
+          if (!assigning) setShowAssignModal(false);
+        }}
         title="Assign Children"
       >
         <div className="grid gap-4">
           <div>
-            <p className="text-sm text-gray-500">
-              Parent
-            </p>
-
+            <p className="text-sm text-gray-500">Parent</p>
             <p className="font-semibold">
-              {selectedParent?.profile?.first_name}{' '}
-              {selectedParent?.profile?.last_name}
+              {selectedParent?.profile?.first_name || ''}{' '}
+              {selectedParent?.profile?.last_name || ''}
             </p>
           </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              Student Admission Number(s)
-            </label>
-
-            <textarea
-              className="form-textarea"
-              rows={4}
-              value={admissionNumbers}
-              onChange={(e) =>
-                setAdmissionNumbers(
-                  e.target.value
-                )
-              }
-              placeholder="0070, 0123, 0145"
-              disabled={assigningChildren}
-            />
-
-            <p className="form-hint">
-              Enter one or more admission numbers separated
-              by commas. Leading zeros are preserved.
-            </p>
-
-            {enteredNumbers.length > 0 && (
-              <p className="mt-1 text-sm text-gray-500">
-                {enteredNumbers.length}{' '}
-                {enteredNumbers.length === 1
-                  ? 'admission number'
-                  : 'admission numbers'}{' '}
-                entered
-              </p>
-            )}
-          </div>
-
-          <label className="flex items-center gap-2 cursor-pointer">
+          <textarea
+            className="form-textarea"
+            rows={4}
+            placeholder="Admission numbers: 0070, 0123"
+            value={admissionNumbers}
+            onChange={(event) =>
+              setAdmissionNumbers(event.target.value)
+            }
+            disabled={assigning}
+          />
+          <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={isPrimary}
-              onChange={(e) =>
-                setIsPrimary(
-                  e.target.checked
-                )
+              onChange={(event) =>
+                setIsPrimary(event.target.checked)
               }
-              disabled={assigningChildren}
+              disabled={assigning}
             />
-
-            <span className="text-sm">
-              Mark as primary parent for these children
-            </span>
+            Mark as primary parent
           </label>
-
           <div className="flex justify-end gap-3">
             <Button
               variant="ghost"
-              onClick={closeAssignChildrenModal}
-              disabled={assigningChildren}
+              onClick={() => setShowAssignModal(false)}
+              disabled={assigning}
             >
               Cancel
             </Button>
-
             <Button
               variant="primary"
-              onClick={handleAssignChildren}
-              loading={assigningChildren}
+              onClick={handleAssign}
+              loading={assigning}
             >
               Assign Children
             </Button>
@@ -686,4 +619,3 @@ export default function ParentsPage() {
     </div>
   );
 }
-

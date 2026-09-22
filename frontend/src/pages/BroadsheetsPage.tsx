@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +12,7 @@ import { StatusBadge } from '../components/ui/Badge';
 export default function BroadsheetsPage() {
   const { call } = useApi();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
 
   const [broadsheets, setBroadsheets] = useState<BroadsheetSubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,8 +21,9 @@ export default function BroadsheetsPage() {
   const [returnReason, setReturnReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const isTeacher = user?.role === 'teacher';
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const role = activeRole || user?.role;
+  const isTeacher = role === 'teacher';
+  const isAdmin = role === 'admin' || role === 'super_admin';
 
   const fetchBroadsheets = useCallback(async () => {
     setLoading(true);
@@ -203,3 +204,4 @@ export default function BroadsheetsPage() {
     </div>
   );
 }
+

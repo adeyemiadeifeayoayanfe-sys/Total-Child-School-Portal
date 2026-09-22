@@ -31,6 +31,17 @@ export const createUserSchema = z.object({
   gender: z.enum(['male', 'female']).optional().nullable(),
 });
 
+export const updateUserRolesSchema = z.object({
+  roles: z.array(
+    z.enum(['admin', 'teacher', 'parent'])
+  )
+    .min(1, 'At least one role is required')
+    .max(3, 'A user can have at most three roles')
+    .refine(
+      (roles) => new Set(roles).size === roles.length,
+      'Roles must be unique'
+    ),
+});
 export const updateUserSchema = z.object({
   first_name: z.string().min(1).optional(),
   last_name: z.string().min(1).optional(),

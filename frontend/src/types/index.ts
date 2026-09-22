@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // COMMON TYPES
 // ============================================
 
@@ -9,7 +9,7 @@ export type AssessmentStage = 'classes' | 'first_test' | 'second_test' | 'third_
 export type StudentStatus = 'active' | 'archived' | 'graduated' | 'transferred';
 export type BroadsheetStatus = 'draft' | 'submitted' | 'returned' | 'approved';
 export type ResultStatus = 'pending' | 'generated' | 'reviewed' | 'published' | 'archived';
-export type Gender = 'male' | 'female' | 'other';
+export type Gender = 'male' | 'female';
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded' | 'voided';
 export type ReceiptStatus = 'pending' | 'generated' | 'printed' | 'voided';
@@ -85,6 +85,7 @@ export interface Class {
   name: string;
   description: string | null;
   is_active: boolean;
+  student_count?: number;
 }
 
 export interface Subject {
@@ -272,6 +273,8 @@ export interface Receipt {
 // ============================================
 
 export interface AdminDashboardData {
+  unread_notifications?: number;
+  published_announcements?: number;
   students: number;
   teachers: number;
   parents: number;
@@ -293,6 +296,7 @@ export interface AdminDashboardData {
 }
 
 export interface TeacherDashboardData {
+  unread_notifications?: number;
   classes: any[];
   subjects: any[];
   today_attendance_taken: boolean;
@@ -303,6 +307,7 @@ export interface TeacherDashboardData {
 }
 
 export interface ParentDashboardData {
+  unread_notifications?: number;
   children: Array<{
     student: Student;
     latest_result: Result | null;
@@ -326,4 +331,39 @@ export interface AuditLog {
   created_at: string;
   user?: User | null;
 }
+export type AnnouncementAudience =
+  | 'everyone'
+  | 'admins'
+  | 'teachers'
+  | 'parents';
+export interface Announcement {
+  id: string;
+  title: string;
+  message: string;
+  audience: AnnouncementAudience;
+  is_published: boolean;
+  published_at: string | null;
+  created_by: string;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+  creator?: {
+    id: string;
+    email: string;
+    role: UserRole;
+  } | null;
+}
+export interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  notification_type: 'info' | 'success' | 'warning' | 'error' | 'announcement';
+  is_read: boolean;
+  read_at: string | null;
+  link: string | null;
+  metadata: Record<string, any>;
+  created_at: string;
+}
+
 

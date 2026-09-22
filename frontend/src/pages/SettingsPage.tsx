@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';
@@ -100,6 +100,22 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSetCurrentTerm = async () => {
+    if (!currentTermId) {
+      showToast('error', 'Please select a term');
+      return;
+    }
+    const result = await call('/settings/set-current-term', {
+      method: 'POST',
+      body: { term_id: currentTermId },
+    });
+    if (result.success) {
+      showToast('success', 'Current term updated');
+      await fetchSettings();
+    } else {
+      showToast('error', result.error || 'Failed to update term');
+    }
+  };
   const handleSetAssessmentStage = async () => {
     if (!currentTermId || !assessmentStage) {
       showToast('error', 'Please select a term and stage');
@@ -206,7 +222,27 @@ export default function SettingsPage() {
                 <select
                   className="form-select"
                   value={currentSessionId}
-                  onChange={(e) => setCurrentSessionId(e.target.value)}
+                  onChange={(e) => {
+                    const selectedSessionId = e.target.value;
+                    setCurrentSessionId(selectedSessionId);
+                    const selectedSession = sessions.find(
+                      (session) => session.id === selectedSessionId
+                    );
+                    const selectedTerms = selectedSession?.terms || [];
+                    setTerms(selectedTerms);
+                    const selectedCurrentTerm =
+                      selectedTerms.find((term: any) => term.is_current) ||
+                      selectedTerms[0];
+                    if (selectedCurrentTerm) {
+                      setCurrentTermId(selectedCurrentTerm.id);
+                      setAssessmentStage(
+                        selectedCurrentTerm.assessment_stage || 'classes'
+                      );
+                    } else {
+                      setCurrentTermId('');
+                      setAssessmentStage('classes');
+                    }
+                  }}
                 >
                   <option value="">Select session...</option>
                   {sessions.map((session) => (
@@ -220,15 +256,40 @@ export default function SettingsPage() {
             </div>
             <div className="form-group">
               <label className="form-label">Current Term</label>
-              <select className="form-select" value={currentTermId} disabled>
-                <option value="">Select term...</option>
-                {terms.map((term) => (
-                  <option key={term.id} value={term.id}>
-                    {term.name.charAt(0).toUpperCase() + term.name.slice(1)} Term
-                  </option>
-                ))}
-              </select>
-              <p className="form-hint">Term is determined by the current session.</p>
+              <div className="flex gap-2">
+                <select
+                  className="form-select"
+                  value={currentTermId}
+                  onChange={(e) => {
+                    const selectedTermId = e.target.value;
+                    setCurrentTermId(selectedTermId);
+                    const selectedTerm = terms.find(
+                      (term) => term.id === selectedTermId
+                    );
+                    if (selectedTerm) {
+                      setAssessmentStage(
+                        selectedTerm.assessment_stage || 'classes'
+                      );
+                    }
+                  }}
+                >
+                  <option value="">Select term...</option>
+                  {terms.map((term) => (
+                    <option key={term.id} value={term.id}>
+                      {term.name.charAt(0).toUpperCase() + term.name.slice(1)} Term
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  variant="outline"
+                  onClick={handleSetCurrentTerm}
+                >
+                  Set Current
+                </Button>
+              </div>
+              <p className="form-hint">
+                Select the active term for the current academic session.
+              </p>
             </div>
             <div className="form-group">
               <label className="form-label">Assessment Stage</label>
@@ -287,3 +348,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+

@@ -12,7 +12,7 @@ import { LoadingContainer } from '../components/ui/Spinner';
 export default function AttendancePage() {
   const { call } = useApi();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
 
   const [classes, setClasses] = useState<Class[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
@@ -23,7 +23,8 @@ export default function AttendancePage() {
   const [students, setStudents] = useState<any[]>([]);
   const [attendanceForm, setAttendanceForm] = useState<Record<string, string>>({});
 
-  const isTeacher = user?.role === 'teacher';
+  const role = activeRole || user?.role;
+  const isTeacher = role === 'teacher';
 
   const fetchClasses = useCallback(async () => {
     const endpoint = isTeacher ? '/teachers/my/classes' : '/classes';
@@ -149,7 +150,7 @@ export default function AttendancePage() {
     {
       key: 'remarks',
       header: 'Remarks',
-      render: (record: Attendance) => record.remarks || '—',
+      render: (record: Attendance) => record.remarks || '-',
     },
   ];
 
@@ -280,3 +281,5 @@ export default function AttendancePage() {
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import '../styles/landing.css';
@@ -65,7 +65,7 @@ export default function LandingPage() {
               <span className="landing-hero-highlight">Shaping Better Futures.</span>
             </h1>
             <p className="landing-hero-description">
-              CEM Total Child School provides a nurturing, world‑class education
+              CEM Total Child School provides a nurturing, world-class education
               that prepares students for a lifetime of success. Our holistic
               approach develops confident, compassionate leaders.
             </p>
@@ -207,7 +207,7 @@ export default function LandingPage() {
             
             <div className="landing-academic-item">
               <span className="landing-academic-number">03</span>
-              <h4>Co‑curricular</h4>
+              <h4>Co-curricular</h4>
               <p>Sports, music, arts, and clubs that develop talent and teamwork.</p>
             </div>
           </div>
@@ -260,7 +260,7 @@ export default function LandingPage() {
               <p>
                 At CEM Total Child School, we are more than an educational
                 institution – we are a family. Our mission is to provide a
-                high‑quality, holistic education that nurtures the intellectual,
+                high-quality, holistic education that nurtures the intellectual,
                 social, and emotional growth of every student.
               </p>
               <p>
@@ -333,3 +333,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+

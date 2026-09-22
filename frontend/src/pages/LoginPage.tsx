@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
@@ -138,7 +138,7 @@ export default function LoginPage() {
 
         <div className="auth-footer">
           <Link to="/">
-            ← Back to Home
+            † Back to Home
           </Link>
 
           <p
@@ -156,3 +156,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

@@ -12,7 +12,7 @@ import { StatusBadge } from '../components/ui/Badge';
 export default function PaymentsPage() {
   const { call } = useApi();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -27,8 +27,9 @@ export default function PaymentsPage() {
     payment_method: 'cash',
   });
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-  const isParent = user?.role === 'parent';
+  const role = activeRole || user?.role;
+  const isAdmin = role === 'admin' || role === 'super_admin';
+  const isParent = role === 'parent';
 
   const fetchPayments = useCallback(async () => {
     setLoading(true);
@@ -119,7 +120,7 @@ export default function PaymentsPage() {
       key: 'student',
       header: 'Student',
       render: (payment: Payment) =>
-        payment.student ? `${payment.student.first_name} ${payment.student.last_name}` : '—',
+        payment.student ? `${payment.student.first_name} ${payment.student.last_name}` : '-',
     },
     {
       key: 'purpose',
@@ -130,7 +131,7 @@ export default function PaymentsPage() {
       key: 'amount',
       header: 'Amount',
       render: (payment: Payment) => (
-        <span className="font-semibold">₦{payment.amount.toLocaleString()}</span>
+        <span className="font-semibold">?{payment.amount.toLocaleString()}</span>
       ),
     },
     {
@@ -201,7 +202,7 @@ export default function PaymentsPage() {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Amount (₦)</label>
+            <label className="form-label">Amount (?)</label>
             <input
               type="number"
               min="0"
@@ -254,3 +255,4 @@ export default function PaymentsPage() {
     </div>
   );
 }
+

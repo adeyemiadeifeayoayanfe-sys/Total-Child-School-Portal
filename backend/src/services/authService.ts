@@ -281,7 +281,9 @@ export async function updateUserRoles(
   // through this endpoint.
   // ----------------------------------------
 
-  if (user.role === 'super_admin') {
+  const targetIsSuperAdmin = await isSuperAdminUser(userId);
+
+  if (targetIsSuperAdmin) {
     throw new AppError(
       'Super Admin roles cannot be modified through normal user management',
       403
@@ -473,6 +475,13 @@ export async function deactivateUser(
     throw new NotFoundError('User not found');
   }
 
+  if (await isSuperAdminUser(userId)) {
+    throw new AppError(
+      'Super Admin accounts cannot be deactivated through normal user management',
+      403
+    );
+  }
+
   const { error: updateError } = await supabaseAdmin
     .from('users')
     .update({
@@ -534,6 +543,13 @@ export async function activateUser(
     throw new NotFoundError('User not found');
   }
 
+  if (await isSuperAdminUser(userId)) {
+    throw new AppError(
+      'Super Admin accounts cannot be deactivated through normal user management',
+      403
+    );
+  }
+
   const { error: updateError } = await supabaseAdmin
     .from('users')
     .update({
@@ -592,6 +608,13 @@ export async function resetUserPassword(
     throw new NotFoundError('User not found');
   }
 
+  if (await isSuperAdminUser(userId)) {
+    throw new AppError(
+      'Super Admin passwords cannot be reset through normal user management',
+      403
+    );
+  }
+
   const { error: resetError } =
     await supabaseAdmin.auth.admin.updateUserById(
       user.auth_id,
@@ -614,4 +637,33 @@ export async function resetUserPassword(
   });
 
   return { success: true };
+}async function isSuperAdminUser(userId: string): Promise<boolean> {
+  const { data: user, error: userError } = await supabaseAdmin
+    .from('users')
+    .select('role')
+    .eq('id', userId)
+    .single();
+
+  if (userError || !user) {
+    throw new NotFoundError('User not found');
+  }
+
+  if (user.role === 'super_admin') {
+    return true;
+  }
+
+  const { data: roleRows, error: rolesError } = await supabaseAdmin
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'super_admin');
+
+  if (rolesError) {
+    throw new AppError(
+      'Failed to verify user permissions',
+      500
+    );
+  }
+
+  return (roleRows?.length ?? 0) > 0;
 }

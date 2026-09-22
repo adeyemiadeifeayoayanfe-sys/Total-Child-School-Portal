@@ -30,6 +30,10 @@ export async function takeAttendance(
   const sessionId = input.session_id;
   const termId = input.term_id;
 
+  if (!input.records || input.records.length === 0) {
+    throw new AppError('At least one student attendance record is required', 400);
+  }
+
   // Check for existing attendance for this class/date/session
   const { data: existing } = await supabaseAdmin
     .from('attendance')
@@ -86,7 +90,9 @@ export async function takeAttendance(
 
   // Count absentees
   const absentCount = input.records.filter(r => r.status === 'absent').length;
-  const presentCount = input.records.filter(r => r.status === 'present').length;
+  const presentCount = input.records.filter(
+    r => r.status === 'present' || r.status === 'late'
+  ).length;
 
   await logAudit(markedBy, {
     action: 'attendance_taken',
@@ -245,3 +251,5 @@ export async function getAttendanceStats(
     attendanceRate: total > 0 ? ((present + late) / total) * 100 : 0,
   };
 }
+
+

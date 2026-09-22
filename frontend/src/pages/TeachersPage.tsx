@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
-import { Teacher, Class, AcademicSession } from '../types';
+import { Teacher, Class, AcademicSession, Subject } from '../types';
 import Table from '../components/ui/Table';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -9,26 +9,65 @@ import Card from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 
+interface TeacherAssignmentData {
+  teacher?: Teacher;
+  classAssignments?: Array<{
+    id: string;
+    is_class_teacher?: boolean;
+    class?: {
+      id: string;
+      name: string;
+    };
+    session?: {
+      id: string;
+      name: string;
+    };
+  }>;
+  subjectAssignments?: Array<{
+    id: string;
+    subject?: {
+      id: string;
+      name: string;
+    };
+    class?: {
+      id: string;
+      name: string;
+    };
+    session?: {
+      id: string;
+      name: string;
+    };
+  }>;
+}
+
 export default function TeachersPage() {
   const { call } = useApi();
   const { showToast } = useToast();
 
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [loadingAssignmentData, setLoadingAssignmentData] = useState(false);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
+  const [showActivateDialog, setShowActivateDialog] = useState(false);
   const [showAssignClassModal, setShowAssignClassModal] = useState(false);
+  const [showAssignSubjectModal, setShowAssignSubjectModal] = useState(false);
+  const [showAssignmentsModal, setShowAssignmentsModal] = useState(false);
 
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
+  const [assignmentData, setAssignmentData] =
+    useState<TeacherAssignmentData | null>(null);
 
   const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState('');
   const [isClassTeacher, setIsClassTeacher] = useState(false);
 
@@ -40,6 +79,8 @@ export default function TeachersPage() {
     phone: '',
     qualification: '',
     specialization: '',
+    address: '',
+    date_hired: '',
   });
 
   const fetchTeachers = useCallback(async () => {
@@ -82,10 +123,12 @@ export default function TeachersPage() {
   const fetchAssignmentData = async () => {
     setLoadingAssignmentData(true);
 
-    const [classesResult, sessionsResult] = await Promise.all([
-      call('/classes'),
-      call('/sessions'),
-    ]);
+    const [classesResult, subjectsResult, sessionsResult] =
+      await Promise.all([
+        call('/classes'),
+        call('/subjects'),
+        call('/sessions'),
+      ]);
 
     if (!classesResult.success) {
       showToast(
@@ -94,10 +137,17 @@ export default function TeachersPage() {
       );
     }
 
+    if (!subjectsResult.success) {
+      showToast(
+        'error',
+        subjectsResult.error || 'Failed to fetch subjects'
+      );
+    }
+
     if (!sessionsResult.success) {
       showToast(
         'error',
-        sessionsResult.error || 'Failed to fetch sessions'
+        sessionsResult.error || 'Failed to fetch academic sessions'
       );
     }
 
@@ -105,10 +155,15 @@ export default function TeachersPage() {
       (item) => item.is_active
     );
 
+    const availableSubjects = extractArray<Subject>(subjectsResult).filter(
+      (item) => item.is_active
+    );
+
     const availableSessions =
       extractArray<AcademicSession>(sessionsResult);
 
     setClasses(availableClasses);
+    setSubjects(availableSubjects);
     setSessions(availableSessions);
 
     const currentSession = availableSessions.find(
@@ -130,6 +185,37 @@ export default function TeachersPage() {
     setShowAssignClassModal(true);
 
     await fetchAssignmentData();
+  };
+
+  const openAssignSubjectModal = async (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    setSelectedSubjectId('');
+    setSelectedClassId('');
+    setSelectedSessionId('');
+    setShowAssignSubjectModal(true);
+
+    await fetchAssignmentData();
+  };
+
+  const openAssignmentsModal = async (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    setAssignmentData(null);
+    setShowAssignmentsModal(true);
+    setLoadingAssignments(true);
+
+    const result = await call(`/teachers/${teacher.id}`);
+
+    if (result.success && result.data) {
+      setAssignmentData(result.data);
+    } else {
+      showToast(
+        'error',
+        result.error || 'Failed to fetch teacher assignments'
+      );
+      setShowAssignmentsModal(false);
+    }
+
+    setLoadingAssignments(false);
   };
 
   const handleAssignClass = async () => {
@@ -181,6 +267,60 @@ export default function TeachersPage() {
     setAssignmentLoading(false);
   };
 
+  const handleAssignSubject = async () => {
+    if (!selectedTeacher) {
+      showToast('error', 'No teacher selected');
+      return;
+    }
+
+    if (!selectedSubjectId) {
+      showToast('error', 'Please select a subject');
+      return;
+    }
+
+    if (!selectedClassId) {
+      showToast('error', 'Please select a class');
+      return;
+    }
+
+    if (!selectedSessionId) {
+      showToast('error', 'Please select an academic session');
+      return;
+    }
+
+    setAssignmentLoading(true);
+
+    const result = await call('/teachers/assign-subject', {
+      method: 'POST',
+      body: {
+        teacher_id: selectedTeacher.id,
+        subject_id: selectedSubjectId,
+        class_id: selectedClassId,
+        session_id: selectedSessionId,
+      },
+    });
+
+    if (result.success) {
+      showToast(
+        'success',
+        'Teacher assigned to subject successfully'
+      );
+
+      setShowAssignSubjectModal(false);
+      setSelectedTeacher(null);
+      setSelectedSubjectId('');
+      setSelectedClassId('');
+      setSelectedSessionId('');
+    } else {
+      showToast(
+        'error',
+        result.error || 'Failed to assign teacher to subject'
+      );
+    }
+
+    setAssignmentLoading(false);
+  };
+
   const handleCreate = async () => {
     if (
       !formData.email ||
@@ -195,11 +335,25 @@ export default function TeachersPage() {
       return;
     }
 
+    if (formData.password.length < 8) {
+      showToast(
+        'error',
+        'Temporary password must be at least 8 characters'
+      );
+      return;
+    }
+
     setSubmitting(true);
+
+    const payload = {
+      ...formData,
+      address: formData.address || null,
+      date_hired: formData.date_hired || null,
+    };
 
     const result = await call('/teachers', {
       method: 'POST',
-      body: formData,
+      body: payload,
     });
 
     if (result.success) {
@@ -224,6 +378,8 @@ export default function TeachersPage() {
   const handleDeactivate = async () => {
     if (!selectedTeacher) return;
 
+    setSubmitting(true);
+
     const result = await call(
       `/teachers/${selectedTeacher.id}/deactivate`,
       {
@@ -238,6 +394,7 @@ export default function TeachersPage() {
       );
 
       setShowDeactivateDialog(false);
+      setSelectedTeacher(null);
       fetchTeachers();
     } else {
       showToast(
@@ -245,6 +402,39 @@ export default function TeachersPage() {
         result.error || 'Failed to deactivate teacher'
       );
     }
+
+    setSubmitting(false);
+  };
+
+  const handleActivate = async () => {
+    if (!selectedTeacher) return;
+
+    setSubmitting(true);
+
+    const result = await call(
+      `/teachers/${selectedTeacher.id}/activate`,
+      {
+        method: 'POST',
+      }
+    );
+
+    if (result.success) {
+      showToast(
+        'success',
+        'Teacher activated successfully'
+      );
+
+      setShowActivateDialog(false);
+      setSelectedTeacher(null);
+      fetchTeachers();
+    } else {
+      showToast(
+        'error',
+        result.error || 'Failed to activate teacher'
+      );
+    }
+
+    setSubmitting(false);
   };
 
   const resetForm = () => {
@@ -256,6 +446,8 @@ export default function TeachersPage() {
       phone: '',
       qualification: '',
       specialization: '',
+      address: '',
+      date_hired: '',
     });
   };
 
@@ -305,7 +497,7 @@ export default function TeachersPage() {
       key: 'actions',
       header: 'Actions',
       render: (teacher: Teacher) => (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="primary"
             size="sm"
@@ -318,16 +510,49 @@ export default function TeachersPage() {
           </Button>
 
           <Button
-            variant="ghost"
+            variant="primary"
             size="sm"
-            onClick={() => {
-              setSelectedTeacher(teacher);
-              setShowDeactivateDialog(true);
-            }}
+            onClick={() =>
+              openAssignSubjectModal(teacher)
+            }
             disabled={!teacher.is_active}
           >
-            Deactivate
+            Assign Subject
           </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              openAssignmentsModal(teacher)
+            }
+          >
+            Assignments
+          </Button>
+
+          {teacher.is_active ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelectedTeacher(teacher);
+                setShowDeactivateDialog(true);
+              }}
+            >
+              Deactivate
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelectedTeacher(teacher);
+                setShowActivateDialog(true);
+              }}
+            >
+              Activate
+            </Button>
+          )}
         </div>
       ),
     },
@@ -415,8 +640,7 @@ export default function TeachersPage() {
             />
 
             <p className="form-hint">
-              Teacher will be prompted to change
-              on first login.
+              Teacher will be prompted to change on first login.
             </p>
           </div>
 
@@ -471,6 +695,42 @@ export default function TeachersPage() {
                 })
               }
               placeholder="Phone number"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">
+              Address
+            </label>
+
+            <input
+              className="form-input"
+              value={formData.address}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  address: e.target.value,
+                })
+              }
+              placeholder="Residential address"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">
+              Date Hired
+            </label>
+
+            <input
+              type="date"
+              className="form-input"
+              value={formData.date_hired}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  date_hired: e.target.value,
+                })
+              }
             />
           </div>
 
@@ -546,7 +806,7 @@ export default function TeachersPage() {
 
           {loadingAssignmentData ? (
             <div className="py-6 text-center text-sm text-gray-500">
-              Loading classes and academic sessions...
+              Loading classes, subjects and academic sessions...
             </div>
           ) : (
             <>
@@ -583,8 +843,7 @@ export default function TeachersPage() {
 
                 {sessions.length === 0 && (
                   <p className="form-hint">
-                    No academic sessions have
-                    been created yet.
+                    No academic sessions have been created yet.
                   </p>
                 )}
               </div>
@@ -619,8 +878,7 @@ export default function TeachersPage() {
 
                 {classes.length === 0 && (
                   <p className="form-hint">
-                    No active classes have
-                    been created yet.
+                    No active classes have been created yet.
                   </p>
                 )}
               </div>
@@ -642,8 +900,7 @@ export default function TeachersPage() {
                   </p>
 
                   <p className="text-sm text-gray-500">
-                    Mark this teacher as the
-                    class teacher for this class.
+                    Mark this teacher as the class teacher for this class.
                   </p>
                 </div>
               </label>
@@ -664,6 +921,253 @@ export default function TeachersPage() {
         </div>
       </Modal>
 
+      {/* Assign Subject Modal */}
+      <Modal
+        open={showAssignSubjectModal}
+        onClose={() =>
+          setShowAssignSubjectModal(false)
+        }
+        title="Assign Teacher to Subject"
+      >
+        <div className="grid gap-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <p className="text-sm text-gray-500">
+              Teacher
+            </p>
+
+            <p className="mt-1 font-semibold">
+              {selectedTeacher?.profile?.first_name}{' '}
+              {selectedTeacher?.profile?.last_name}
+            </p>
+
+            <p className="mt-1 text-sm text-gray-500">
+              {selectedTeacher?.staff_number}
+            </p>
+          </div>
+
+          {loadingAssignmentData ? (
+            <div className="py-6 text-center text-sm text-gray-500">
+              Loading subjects, classes and academic sessions...
+            </div>
+          ) : (
+            <>
+              <div className="form-group">
+                <label className="form-label">
+                  Academic Session
+                </label>
+
+                <select
+                  className="form-input"
+                  value={selectedSessionId}
+                  onChange={(e) =>
+                    setSelectedSessionId(
+                      e.target.value
+                    )
+                  }
+                >
+                  <option value="">
+                    Select academic session
+                  </option>
+
+                  {sessions.map((session) => (
+                    <option
+                      key={session.id}
+                      value={session.id}
+                    >
+                      {session.name}
+                      {session.is_current
+                        ? ' (Current)'
+                        : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Class
+                </label>
+
+                <select
+                  className="form-input"
+                  value={selectedClassId}
+                  onChange={(e) =>
+                    setSelectedClassId(
+                      e.target.value
+                    )
+                  }
+                >
+                  <option value="">
+                    Select class
+                  </option>
+
+                  {classes.map((cls) => (
+                    <option
+                      key={cls.id}
+                      value={cls.id}
+                    >
+                      {cls.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Subject
+                </label>
+
+                <select
+                  className="form-input"
+                  value={selectedSubjectId}
+                  onChange={(e) =>
+                    setSelectedSubjectId(
+                      e.target.value
+                    )
+                  }
+                >
+                  <option value="">
+                    Select subject
+                  </option>
+
+                  {subjects.map((subject) => (
+                    <option
+                      key={subject.id}
+                      value={subject.id}
+                    >
+                      {subject.name}
+                    </option>
+                  ))}
+                </select>
+
+                {subjects.length === 0 && (
+                  <p className="form-hint">
+                    No active subjects have been created yet.
+                  </p>
+                )}
+              </div>
+
+              <Button
+                variant="primary"
+                onClick={handleAssignSubject}
+                loading={assignmentLoading}
+                disabled={
+                  !selectedSubjectId ||
+                  !selectedClassId ||
+                  !selectedSessionId
+                }
+              >
+                Assign Subject
+              </Button>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* Assignments Modal */}
+      <Modal
+        open={showAssignmentsModal}
+        onClose={() =>
+          setShowAssignmentsModal(false)
+        }
+        title="Teacher Assignments"
+      >
+        {loadingAssignments ? (
+          <div className="py-8 text-center text-sm text-gray-500">
+            Loading teacher assignments...
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm text-gray-500">
+                Teacher
+              </p>
+
+              <p className="mt-1 font-semibold">
+                {selectedTeacher?.profile?.first_name}{' '}
+                {selectedTeacher?.profile?.last_name}
+              </p>
+
+              <p className="mt-1 text-sm text-gray-500">
+                {selectedTeacher?.staff_number}
+              </p>
+            </div>
+
+            <div>
+              <h3 className="mb-3 font-semibold">
+                Class Assignments
+              </h3>
+
+              {assignmentData?.classAssignments?.length ? (
+                <div className="grid gap-2">
+                  {assignmentData.classAssignments.map(
+                    (assignment) => (
+                      <div
+                        key={assignment.id}
+                        className="rounded-lg border border-gray-200 p-3"
+                      >
+                        <p className="font-medium">
+                          {assignment.class?.name || 'Unknown class'}
+                        </p>
+
+                        <p className="text-sm text-gray-500">
+                          {assignment.session?.name || 'Unknown session'}
+                        </p>
+
+                        {assignment.is_class_teacher && (
+                          <p className="mt-1 text-sm font-medium text-blue-600">
+                            Class Teacher
+                          </p>
+                        )}
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  No active class assignments.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <h3 className="mb-3 font-semibold">
+                Subject Assignments
+              </h3>
+
+              {assignmentData?.subjectAssignments?.length ? (
+                <div className="grid gap-2">
+                  {assignmentData.subjectAssignments.map(
+                    (assignment) => (
+                      <div
+                        key={assignment.id}
+                        className="rounded-lg border border-gray-200 p-3"
+                      >
+                        <p className="font-medium">
+                          {assignment.subject?.name || 'Unknown subject'}
+                        </p>
+
+                        <p className="text-sm text-gray-500">
+                          Class: {assignment.class?.name || 'Unknown class'}
+                        </p>
+
+                        <p className="text-sm text-gray-500">
+                          Session: {assignment.session?.name || 'Unknown session'}
+                        </p>
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  No active subject assignments.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* Deactivate Teacher Dialog */}
       <ConfirmDialog
         open={showDeactivateDialog}
@@ -676,6 +1180,19 @@ export default function TeachersPage() {
         confirmText="Deactivate"
         danger
       />
+
+      {/* Activate Teacher Dialog */}
+      <ConfirmDialog
+        open={showActivateDialog}
+        onClose={() =>
+          setShowActivateDialog(false)
+        }
+        onConfirm={handleActivate}
+        title="Activate Teacher"
+        message={`Are you sure you want to activate ${selectedTeacher?.profile?.first_name} ${selectedTeacher?.profile?.last_name}?`}
+        confirmText="Activate"
+      />
     </div>
   );
 }
+

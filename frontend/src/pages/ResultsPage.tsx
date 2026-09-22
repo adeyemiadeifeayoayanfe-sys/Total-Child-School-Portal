@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +12,7 @@ import { StatusBadge } from '../components/ui/Badge';
 export default function ResultsPage() {
   const { call } = useApi();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
 
   const [results, setResults] = useState<Result[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
@@ -22,6 +22,8 @@ export default function ResultsPage() {
   const [showBulkGenerateModal, setShowBulkGenerateModal] = useState(false);
   const [selectedResult, setSelectedResult] = useState<Result | null>(null);
   const [showResultDetail, setShowResultDetail] = useState(false);
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [regenerateReason, setRegenerateReason] = useState('');
   const [sessions, setSessions] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
   const [formData, setFormData] = useState({
@@ -32,8 +34,9 @@ export default function ResultsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-  const isParent = user?.role === 'parent';
+  const role = activeRole || user?.role;
+  const isAdmin = role === 'admin' || role === 'super_admin';
+  const isParent = role === 'parent';
 
   const fetchResults = useCallback(async () => {
     setLoading(true);
@@ -143,16 +146,71 @@ export default function ResultsPage() {
     setSubmitting(false);
   };
 
+
+
+  const handleReview = async (result: Result) => {
+    const res = await call(`/results/${result.id}/review`, {
+      method: 'POST',
+    });
+    if (res.success) {
+      showToast('success', 'Result reviewed successfully');
+      await fetchResults();
+      setSelectedResult((current) =>
+        current?.id === result.id
+          ? { ...current, status: 'reviewed' }
+          : current
+      );
+    } else {
+      showToast('error', res.error || 'Failed to review result');
+    }
+  };
   const handlePublish = async (result: Result) => {
-    const res = await call(`/results/${result.id}/publish`, { method: 'POST' });
+    const res = await call(`/results/${result.id}/publish`, {
+      method: 'POST',
+    });
     if (res.success) {
       showToast('success', 'Result published successfully');
-      fetchResults();
+      await fetchResults();
+      setSelectedResult((current) =>
+        current?.id === result.id
+          ? { ...current, status: 'published' }
+          : current
+      );
     } else {
       showToast('error', res.error || 'Failed to publish result');
     }
   };
-
+  const openRegenerateModal = (result: Result) => {
+    setSelectedResult(result);
+    setRegenerateReason('');
+    setShowRegenerateModal(true);
+  };
+  const handleRegenerate = async () => {
+    if (!selectedResult) return;
+    if (!regenerateReason.trim()) {
+      showToast('error', 'Please provide a reason for regeneration');
+      return;
+    }
+    setSubmitting(true);
+    const res = await call(`/results/${selectedResult.id}/regenerate`, {
+      method: 'POST',
+      body: {
+        reason: regenerateReason.trim(),
+      },
+    });
+    if (res.success) {
+      showToast('success', 'Result regenerated successfully');
+      setShowRegenerateModal(false);
+      setRegenerateReason('');
+      await fetchResults();
+      if (res.data) {
+        setSelectedResult(res.data);
+      }
+    } else {
+      showToast('error', res.error || 'Failed to regenerate result');
+    }
+    setSubmitting(false);
+  };
   const openResultDetail = async (result: Result) => {
     setSelectedResult(result);
     setShowResultDetail(true);
@@ -168,14 +226,14 @@ export default function ResultsPage() {
     {
       key: 'class',
       header: 'Class',
-      render: (result: Result) => result.class?.name || '—',
+      render: (result: Result) => result.class?.name || '-',
     },
     {
       key: 'term',
       header: 'Term',
       render: (result: Result) => {
         const termNames: Record<string, string> = { first: 'First', second: 'Second', third: 'Third' };
-        return termNames[result.term?.name || ''] || result.term?.name || '—';
+        return termNames[result.term?.name || '-'] || result.term?.name || '-';
       },
     },
     {
@@ -186,7 +244,7 @@ export default function ResultsPage() {
     {
       key: 'position',
       header: 'Position',
-      render: (result: Result) => result.term_position || '—',
+      render: (result: Result) => result.term_position ?? '-',
     },
     {
       key: 'status',
@@ -201,9 +259,19 @@ export default function ResultsPage() {
           <Button variant="outline" size="sm" onClick={() => openResultDetail(result)}>
             View
           </Button>
-          {isAdmin && (result.status === 'generated' || result.status === 'reviewed') && (
+          {isAdmin && result.status === 'generated' && (
+            <Button variant="outline" size="sm" onClick={() => handleReview(result)}>
+              Review
+            </Button>
+          )}
+          {isAdmin && result.status === 'reviewed' && (
             <Button variant="primary" size="sm" onClick={() => handlePublish(result)}>
               Publish
+            </Button>
+          )}
+          {isAdmin && result.status !== 'published' && result.status !== 'archived' && (
+            <Button variant="outline" size="sm" onClick={() => openRegenerateModal(result)}>
+              Regenerate
             </Button>
           )}
         </div>
@@ -380,6 +448,39 @@ export default function ResultsPage() {
       </Modal>
 
       <Modal
+        open={showRegenerateModal}
+        onClose={() => {
+          if (!submitting) {
+            setShowRegenerateModal(false);
+            setRegenerateReason('');
+          }
+        }}
+        title="Regenerate Result"
+      >
+        <div className="grid gap-4">
+          <p className="text-sm text-gray-600">
+            Regenerating this result recalculates it from the current scores,
+            attendance, grading rules, and academic data.
+          </p>
+          <div className="form-group">
+            <label className="form-label">Reason</label>
+            <textarea
+              className="form-input min-h-[120px]"
+              value={regenerateReason}
+              onChange={(e) => setRegenerateReason(e.target.value)}
+              placeholder="Enter the reason for regenerating this result..."
+            />
+          </div>
+          <Button
+            variant="primary"
+            onClick={handleRegenerate}
+            loading={submitting}
+          >
+            Regenerate Result
+          </Button>
+        </div>
+      </Modal>
+      <Modal
         open={showResultDetail}
         onClose={() => setShowResultDetail(false)}
         title="Result Details"
@@ -422,6 +523,26 @@ export default function ResultsPage() {
                 <p className="text-sm text-gray-500">Status</p>
                 <StatusBadge status={selectedResult.status} />
               </div>
+              {isAdmin && selectedResult.status === 'generated' && (
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleReview(selectedResult)}
+                  >
+                    Review Result
+                  </Button>
+                </div>
+              )}
+              {isAdmin && selectedResult.status === 'reviewed' && (
+                <div className="flex items-end">
+                  <Button
+                    variant="primary"
+                    onClick={() => handlePublish(selectedResult)}
+                  >
+                    Publish Result
+                  </Button>
+                </div>
+              )}
               {selectedResult.cumulative_average && (
                 <div>
                   <p className="text-sm text-gray-500">Cumulative Average</p>
@@ -455,10 +576,10 @@ export default function ResultsPage() {
                       {selectedResult.scores.map((score: any, i: number) => (
                         <tr key={i}>
                           <td className="font-medium">{score.subject?.name}</td>
-                          <td>{score.test1 || '—'}</td>
-                          <td>{score.test2 || '—'}</td>
-                          <td>{score.test3 || '—'}</td>
-                          <td>{score.examination || '—'}</td>
+                          <td>{score.test1 ?? '-'}</td>
+                          <td>{score.test2 ?? '-'}</td>
+                          <td>{score.test3 ?? '-'}</td>
+                          <td>{score.examination ?? '-'}</td>
                           <td className="font-semibold">{score.total}</td>
                           <td>
                             <span className="badge badge-info">{score.grade}</span>
@@ -476,3 +597,10 @@ export default function ResultsPage() {
     </div>
   );
 }
+
+
+
+
+
+
+

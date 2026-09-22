@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+﻿import React, { createContext, useContext, useState, useCallback } from 'react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -39,8 +39,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             role="alert"
           >
             <span className="toast-icon" aria-hidden="true">
-              {toast.type === 'success' && '✓'}
-              {toast.type === 'error' && '✗'}
+              {toast.type === 'success' && '✓“'}
+              {toast.type === 'error' && '✓—'}
               {toast.type === 'warning' && '!'}
               {toast.type === 'info' && 'i'}
             </span>
@@ -59,3 +59,4 @@ export function useToast(): ToastContextType {
   }
   return context;
 }
+

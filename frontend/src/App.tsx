@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import {
   Routes,
   Route,
@@ -36,6 +36,8 @@ import UsersPage from './pages/UsersPage';
 
 import ProfilePage from './pages/ProfilePage';
 import ParentChildrenPage from './pages/ParentChildrenPage';
+import AnnouncementsPage from './pages/AnnouncementsPage';
+import NotificationsPage from './pages/NotificationsPage';
 
 import { LoadingContainer } from './components/ui/Spinner';
 
@@ -317,6 +319,16 @@ export default function App() {
           />
 
           {/* =========================
+              COMMUNICATION
+              ========================= */}
+          <Route
+            path="/announcements"
+            element={<AnnouncementsPage />}
+          />
+          <Route
+            path="/notifications"
+            element={<NotificationsPage />}
+          />          {/* =========================
               PARENT
               ========================= */}
 

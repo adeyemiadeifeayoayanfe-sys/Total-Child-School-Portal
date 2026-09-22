@@ -110,7 +110,7 @@ export default function CashbookPage() {
         <span className={`font-semibold ${
           txn.txn_type === 'credit' ? 'text-success' : 'text-error'
         }`}>
-          {txn.txn_type === 'credit' ? '+' : '-'}₦{txn.amount.toLocaleString()}
+          {txn.txn_type === 'credit' ? '+' : '-'}?{txn.amount.toLocaleString()}
         </span>
       ),
     },
@@ -118,13 +118,13 @@ export default function CashbookPage() {
       key: 'balance',
       header: 'Balance',
       render: (txn: CashbookTransaction) => (
-        <span className="font-semibold">₦{txn.running_balance.toLocaleString()}</span>
+        <span className="font-semibold">?{txn.running_balance.toLocaleString()}</span>
       ),
     },
     {
       key: 'description',
       header: 'Description',
-      render: (txn: CashbookTransaction) => txn.description || '—',
+      render: (txn: CashbookTransaction) => txn.description || '-',
     },
   ];
 
@@ -146,14 +146,14 @@ export default function CashbookPage() {
         <div className="stat-card">
           <div className="stat-icon stat-icon-green">CR</div>
           <div className="stat-content">
-            <h3>₦{summary.total_credits.toLocaleString()}</h3>
+            <h3>?{summary.total_credits.toLocaleString()}</h3>
             <p>Total Credits</p>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-icon stat-icon-red">DB</div>
           <div className="stat-content">
-            <h3>₦{summary.total_debits.toLocaleString()}</h3>
+            <h3>?{summary.total_debits.toLocaleString()}</h3>
             <p>Total Debits</p>
           </div>
         </div>
@@ -161,7 +161,7 @@ export default function CashbookPage() {
           <div className="stat-icon stat-icon-blue">BL</div>
           <div className="stat-content">
             <h3 className={summary.balance >= 0 ? 'text-success' : 'text-error'}>
-              ₦{summary.balance.toLocaleString()}
+              ?{summary.balance.toLocaleString()}
             </h3>
             <p>Current Balance</p>
           </div>
@@ -205,7 +205,7 @@ export default function CashbookPage() {
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">Amount (₦)</label>
+              <label className="form-label">Amount (?)</label>
               <input
                 type="number"
                 min="0"

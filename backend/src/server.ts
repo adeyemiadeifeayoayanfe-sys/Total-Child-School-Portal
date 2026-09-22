@@ -1,4 +1,4 @@
-import express, { Application } from 'express';
+﻿import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -23,6 +23,7 @@ import resultRoutes from './routes/results';
 import paymentRoutes from './routes/payments';
 import receiptRoutes from './routes/receipts';
 import notificationRoutes from './routes/notifications';
+import announcementRoutes from './routes/announcements';
 import auditLogRoutes from './routes/auditLogs';
 import settingsRoutes from './routes/settings';
 import dashboardRoutes from './routes/dashboard';
@@ -96,6 +97,7 @@ app.use('/api/results', resultRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/receipts', receiptRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/announcements', announcementRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
@@ -123,9 +125,9 @@ app.use(errorHandler);
 
 // Start server
 const server = app.listen(config.port, () => {
-  console.log(`🚀 Server running on port ${config.port}`);
-  console.log(`📚 Environment: ${config.nodeEnv}`);
-  console.log(`🔗 Health check: http://localhost:${config.port}/health`);
+  console.log(`ðŸš€ Server running on port ${config.port}`);
+  console.log(`ðŸ“š Environment: ${config.nodeEnv}`);
+  console.log(`ðŸ”— Health check: http://localhost:${config.port}/health`);
 });
 
 // Graceful shutdown

@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from 'express';
+﻿import { Router, Request, Response, NextFunction } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 import { authenticate, authorizeAdmin, authorizeTeacher, authorizeParent } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
@@ -92,6 +92,16 @@ router.get('/admin', authenticate, authorizeAdmin, async (req: Request, res: Res
       .select('*', { count: 'exact', head: true })
       .eq('status', 'published');
 
+    // Communication summary
+    const { count: unreadNotifications } = await supabaseAdmin
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.authUserId)
+      .eq('is_read', false);
+    const { count: publishedAnnouncements } = await supabaseAdmin
+      .from('announcements')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_published', true);
     res.json({
       success: true,
       data: {
@@ -113,6 +123,8 @@ router.get('/admin', authenticate, authorizeAdmin, async (req: Request, res: Res
         },
         cashbook_balance: lastTxn?.running_balance || 0,
         receipt_queue: receiptQueue || 0,
+        unread_notifications: unreadNotifications || 0,
+        published_announcements: publishedAnnouncements || 0,
       },
     });
   } catch (error) {
@@ -182,6 +194,12 @@ router.get('/teacher', authenticate, authorizeTeacher, async (req: Request, res:
       .eq('teacher_id', teacher.id)
       .in('status', ['draft', 'returned']);
 
+    // Unread notifications
+    const { count: unreadNotifications } = await supabaseAdmin
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.authUserId)
+      .eq('is_read', false);
     res.json({
       success: true,
       data: {
@@ -192,6 +210,7 @@ router.get('/teacher', authenticate, authorizeTeacher, async (req: Request, res:
         total_classes: classAssignments?.length || 0,
         total_subjects: subjectAssignments?.length || 0,
         pending_broadsheet_count: pendingBroadsheets?.length || 0,
+        unread_notifications: unreadNotifications || 0,
       },
     });
   } catch (error) {
@@ -228,7 +247,12 @@ router.get('/parent', authenticate, authorizeParent, async (req: Request, res: R
       .eq('parent_id', parent.id)
       .is('unassigned_at', null);
 
-    const childrenData = [];
+    // Unread notifications
+    const { count: unreadNotifications } = await supabaseAdmin
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.authUserId)
+      .eq('is_read', false);    const childrenData = [];
 
     for (const child of (children || []) as Array<{
       student: {
@@ -280,12 +304,12 @@ router.get('/parent', authenticate, authorizeParent, async (req: Request, res: R
         recent_attendance: recentAttendance || [],
       });
     }
-
     res.json({
       success: true,
       data: {
         children: childrenData,
         total_children: childrenData.length,
+        unread_notifications: unreadNotifications || 0,
       },
     });
   } catch (error) {
@@ -294,3 +318,8 @@ router.get('/parent', authenticate, authorizeParent, async (req: Request, res: R
 });
 
 export default router;
+
+
+
+
+

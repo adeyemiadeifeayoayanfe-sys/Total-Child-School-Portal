@@ -544,7 +544,7 @@ export async function publishResult(resultId: string, publishedBy: string) {
     throw new NotFoundError('Result not found');
   }
 
-  if (result.status !== 'reviewed' && result.status !== 'generated') {
+  if (result.status !== 'reviewed') {
     throw new ConflictError('Result must be reviewed before publishing');
   }
 
@@ -698,3 +698,4 @@ export async function regenerateResult(
     regeneratedBy
   );
 }
+
