@@ -64,8 +64,10 @@ export default function PaymentsPage() {
 
   const fetchStudents = async () => {
     const result = await call('/students?limit=100');
-    if (result.success && result.data) {
-      setStudents(result.data.data);
+    if (result.success) {
+      setStudents(Array.isArray(result.data) ? result.data : []);
+    } else {
+      setStudents([]);
     }
   };
 
@@ -194,7 +196,7 @@ export default function PaymentsPage() {
               onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
             >
               <option value="">Select student...</option>
-              {students.map((student) => (
+              {(Array.isArray(students) ? students : []).map((student) => (
                 <option key={student.id} value={student.id}>
                   {student.first_name} {student.last_name} ({student.admission_number})
                 </option>
@@ -255,4 +257,6 @@ export default function PaymentsPage() {
     </div>
   );
 }
+
+
 
