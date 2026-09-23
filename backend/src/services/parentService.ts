@@ -255,10 +255,20 @@ export async function createParent(
      * the user so we don't leave an orphaned account.
      */
     if (userId) {
+      const { data: failedUser } = await supabaseAdmin
+        .from('users')
+        .select('auth_id')
+        .eq('id', userId)
+        .maybeSingle();
+
       await supabaseAdmin
         .from('users')
         .delete()
         .eq('id', userId);
+
+      if (failedUser?.auth_id) {
+        await supabaseAdmin.auth.admin.deleteUser(failedUser.auth_id);
+      }
     }
 
     throw error;

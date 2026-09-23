@@ -99,6 +99,19 @@ export async function updateStudent(
     throw new NotFoundError('Student not found');
   }
 
+  if (input.admission_number && input.admission_number !== existing.admission_number) {
+    const { data: duplicate } = await supabaseAdmin
+      .from('students')
+      .select('id')
+      .eq('admission_number', input.admission_number)
+      .neq('id', studentId)
+      .maybeSingle();
+
+    if (duplicate) {
+      throw new ConflictError('A student with this admission number already exists');
+    }
+  }
+
   const { data: student, error } = await supabaseAdmin
     .from('students')
     .update({

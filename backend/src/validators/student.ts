@@ -16,6 +16,7 @@ export const createStudentSchema = z.object({
 });
 
 export const updateStudentSchema = z.object({
+  admission_number: z.string().min(1).optional(),
   first_name: z.string().min(1).optional(),
   last_name: z.string().min(1).optional(),
   middle_name: z.string().optional().nullable(),

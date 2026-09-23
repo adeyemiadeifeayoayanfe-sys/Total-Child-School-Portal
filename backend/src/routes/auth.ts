@@ -1,4 +1,4 @@
-﻿import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
 import { supabaseAdmin } from '../config/supabase';
@@ -183,7 +183,7 @@ router.post(
 
       const { data, error } =
         await supabaseAuth.auth.signInWithPassword({
-          email,
+          email: email.trim().toLowerCase(),
           password,
         });
 
@@ -398,6 +398,7 @@ router.post(
       res.json({
         success: true,
         message: 'Password reset successfully',
+        data: { temporary_password: tempPassword },
       });
     } catch (error) {
       next(error);
@@ -637,3 +638,9 @@ router.post(
 );
 
 export default router;
+
+
+
+
+
+

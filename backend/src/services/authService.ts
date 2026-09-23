@@ -29,7 +29,8 @@ export async function createUser(
   input: CreateUserInput,
   createdBy: string
 ) {
-  // ----------------------------------------
+  const normalizedEmail = input.email.trim().toLowerCase();
+ // ----------------------------------------
   // Validate roles
   // ----------------------------------------
 
@@ -59,7 +60,7 @@ export async function createUser(
     await supabaseAdmin
       .from('users')
       .select('id')
-      .eq('email', input.email)
+      .eq('email', normalizedEmail)
       .maybeSingle();
 
   if (existingUserError) {
@@ -79,7 +80,7 @@ export async function createUser(
 
   const { data: authData, error: authError } =
     await supabaseAdmin.auth.admin.createUser({
-      email: input.email,
+      email: normalizedEmail,
       password: input.password,
       email_confirm: true,
     });
@@ -100,7 +101,7 @@ export async function createUser(
     .from('users')
     .insert({
       auth_id: authData.user.id,
-      email: input.email,
+      email: normalizedEmail,
       role: primaryRole,
       status: 'active',
       created_by: createdBy,
@@ -210,7 +211,7 @@ export async function createUser(
     entity_type: 'user',
     entity_id: user.id,
     new_value: {
-      email: input.email,
+      email: normalizedEmail,
       roles: uniqueRoles,
       primary_role: primaryRole,
     },
@@ -667,3 +668,8 @@ export async function resetUserPassword(
 
   return (roleRows?.length ?? 0) > 0;
 }
+
+
+
+
+

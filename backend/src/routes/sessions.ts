@@ -1,4 +1,4 @@
-﻿import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 import { authenticate, authorizeSuperAdmin } from '../middleware/auth';
 const router = Router();
@@ -15,7 +15,7 @@ router.get(
         res.status(500).json({ error: error.message });
         return;
       }
-      res.json(data ?? []);
+      res.json({ success: true, data: data ?? [] });
     } catch (error) {
       next(error);
     }
@@ -34,7 +34,7 @@ router.get(
         res.status(500).json({ error: error.message });
         return;
       }
-      res.json(data ?? null);
+      res.json({ success: true, data: data ?? null });
     } catch (error) {
       next(error);
     }
@@ -53,7 +53,7 @@ router.get(
         res.status(500).json({ error: error.message });
         return;
       }
-      res.json(data ?? null);
+      res.json({ success: true, data: data ?? null });
     } catch (error) {
       next(error);
     }
@@ -243,3 +243,6 @@ router.post(
   },
 );
 export default router;
+
+
+
