@@ -231,7 +231,7 @@ export default function StudentsPage() {
 
     const result = await call('/students', {
       method: 'POST',
-      body: formData,
+      body: { ...formData, address: formData.address || null, phone: formData.phone || null, email: formData.email || null, middle_name: formData.middle_name || null, admission_date: formData.admission_date || undefined },
     });
 
     if (result.success) {
@@ -262,7 +262,7 @@ export default function StudentsPage() {
       `/students/${selectedStudent.id}`,
       {
         method: 'PUT',
-        body: formData,
+        body: { ...formData, address: formData.address || null, phone: formData.phone || null, email: formData.email || null, middle_name: formData.middle_name || null, admission_date: formData.admission_date || undefined },
       }
     );
 
@@ -658,61 +658,6 @@ export default function StudentsPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="form-label">
-                Phone
-              </label>
-
-              <input
-                className="form-input"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    phone: e.target.value,
-                  })
-                }
-                placeholder="Phone number"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                Email
-              </label>
-
-              <input
-                type="email"
-                className="form-input"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    email: e.target.value,
-                  })
-                }
-                placeholder="student@example.com"
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              Address
-            </label>
-
-            <textarea
-              className="form-textarea"
-              rows={2}
-              value={formData.address}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  address: e.target.value,
-                })
-              }
-              placeholder="Home address"
-            />
           </div>
 
           <Button
@@ -737,6 +682,23 @@ export default function StudentsPage() {
         title="Edit Student"
       >
         <div className="grid gap-4">
+          <div className="form-group">
+            <label className="form-label">
+              Admission Number
+            </label>
+
+            <input
+              className="form-input"
+              value={formData.admission_number}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  admission_number: e.target.value,
+                })
+              }
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="form-group">
               <label className="form-label">
@@ -749,8 +711,7 @@ export default function StudentsPage() {
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    first_name:
-                      e.target.value,
+                    first_name: e.target.value,
                   })
                 }
               />
@@ -767,45 +728,7 @@ export default function StudentsPage() {
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    last_name:
-                      e.target.value,
-                  })
-                }
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="form-label">
-                Phone
-              </label>
-
-              <input
-                className="form-input"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    phone: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                Email
-              </label>
-
-              <input
-                type="email"
-                className="form-input"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    email: e.target.value,
+                    last_name: e.target.value,
                   })
                 }
               />
@@ -814,18 +737,75 @@ export default function StudentsPage() {
 
           <div className="form-group">
             <label className="form-label">
-              Address
+              Middle Name
             </label>
 
-            <textarea
-              className="form-textarea"
-              rows={2}
-              value={formData.address}
+            <input
+              className="form-input"
+              value={formData.middle_name}
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  address:
-                    e.target.value,
+                  middle_name: e.target.value,
+                })
+              }
+              placeholder="Optional"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="form-group">
+              <label className="form-label">
+                Date of Birth
+              </label>
+
+              <input
+                type="date"
+                className="form-input"
+                value={formData.date_of_birth}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    date_of_birth: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Gender
+              </label>
+
+              <select
+                className="form-select"
+                value={formData.gender}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    gender: e.target.value,
+                  })
+                }
+              >
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">
+              Admission Date
+            </label>
+
+            <input
+              type="date"
+              className="form-input"
+              value={formData.admission_date}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  admission_date: e.target.value,
                 })
               }
             />
@@ -1013,3 +993,6 @@ export default function StudentsPage() {
     </div>
   );
 }
+
+
+

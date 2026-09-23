@@ -1,4 +1,4 @@
-ï»¿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
 import { User, UserRole } from '../types';
@@ -49,6 +49,9 @@ export default function UsersPage() {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState('');
+  const [passwordUser, setPasswordUser] = useState<User | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -169,6 +172,21 @@ export default function UsersPage() {
     setSubmitting(false);
   };
 
+  const handleResetPassword = async (user: User) => {
+    if (isSuperAdmin(user)) return;
+    if (!window.confirm("Reset this user's password?")) return;
+    setSubmitting(true);
+    const result = await call('/auth/reset-password', { method: 'POST', body: { user_id: user.id } });
+    if (result.success && result.data?.temporary_password) {
+      setPasswordUser(user);
+      setTemporaryPassword(result.data.temporary_password);
+      setShowPasswordModal(true);
+    } else {
+      showToast('error', result.error || 'Failed to reset password.');
+    }
+    setSubmitting(false);
+  };
+
   const handleDeactivate = async (user: User) => {
     if (isSuperAdmin(user)) {
       showToast(
@@ -249,7 +267,7 @@ export default function UsersPage() {
       header: 'Name',
       render: (user: User) => (
         <span className="font-semibold">
-          {user.profile?.first_name || 'â€”'}{' '}
+          {user.profile?.first_name || '—'}{' '}
           {user.profile?.last_name || ''}
         </span>
       ),
@@ -310,6 +328,12 @@ export default function UsersPage() {
                 disabled={submitting}
               >
                 Roles
+              </Button>
+            )}
+
+            {!protectedAccount && (
+              <Button variant="outline" size="sm" onClick={() => handleResetPassword(user)} disabled={submitting}>
+                Reset Password
               </Button>
             )}
 
@@ -407,7 +431,7 @@ export default function UsersPage() {
       <Modal
         open={showRoleModal}
         onClose={closeRoleModal}
-        title={`Manage Roles â€” ${
+        title={`Manage Roles — ${
           selectedUser?.profile?.first_name || ''
         } ${selectedUser?.profile?.last_name || ''}`}
         footer={
@@ -484,7 +508,61 @@ export default function UsersPage() {
           </div>
         </div>
       </Modal>
+
+      <Modal
+        open={showPasswordModal}
+        onClose={() => {
+          setShowPasswordModal(false);
+          setTemporaryPassword('');
+          setPasswordUser(null);
+        }}
+        title="Temporary Password"
+        footer={
+          <div className="flex justify-end">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setShowPasswordModal(false);
+                setTemporaryPassword('');
+                setPasswordUser(null);
+              }}
+            >
+              Done
+            </Button>
+          </div>
+        }
+      >
+        <div className="grid gap-4">
+          <p>
+            A new temporary password has been generated for{' '}
+            <strong>
+              {passwordUser?.profile?.first_name || ''}{' '}
+              {passwordUser?.profile?.last_name || ''}
+            </strong>.
+          </p>
+
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <p className="mb-2 text-sm text-gray-500">
+              Temporary Password
+            </p>
+            <p className="select-all break-all font-mono text-lg font-semibold">
+              {temporaryPassword}
+            </p>
+          </div>
+
+          <p className="text-sm text-gray-500">
+            Give this password to the user securely. It is shown only once
+            and is not stored in the application.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }
+
+
+
+
+
+
 

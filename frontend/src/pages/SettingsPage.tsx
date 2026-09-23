@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';
@@ -24,6 +24,9 @@ export default function SettingsPage() {
   const [currentSessionId, setCurrentSessionId] = useState('');
   const [currentTermId, setCurrentTermId] = useState('');
   const [assessmentStage, setAssessmentStage] = useState('');
+  const [gradingModalOpen, setGradingModalOpen] = useState(false);
+  const [editingGrade, setEditingGrade] = useState<any>(null);
+  const [gradingForm, setGradingForm] = useState({ grade: '', min_score: '', max_score: '', remarks: '' });
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -40,9 +43,14 @@ export default function SettingsPage() {
     }
 
     const sessionsResult = await call('/sessions');
-    if (sessionsResult.success && sessionsResult.data) {
-      setSessions(sessionsResult.data);
-      const current = sessionsResult.data.find((s: any) => s.is_current);
+    if (sessionsResult.success) {
+      const sessionList = Array.isArray(sessionsResult.data)
+        ? sessionsResult.data
+        : Array.isArray((sessionsResult.data as any)?.data)
+          ? (sessionsResult.data as any).data
+          : [];
+      setSessions(sessionList);
+      const current = sessionList.find((s: any) => s.is_current);
       if (current) {
         setCurrentSessionId(current.id);
         setTerms(current.terms || []);
@@ -132,6 +140,48 @@ export default function SettingsPage() {
       fetchSettings();
     } else {
       showToast('error', result.error || 'Failed to update stage');
+    }
+  };
+
+  const openGradingModal = (rule: any = null) => {
+    setEditingGrade(rule);
+    setGradingForm({
+      grade: rule?.grade || '',
+      min_score: rule ? String(rule.min_score) : '',
+      max_score: rule ? String(rule.max_score) : '',
+      remarks: rule?.remarks || '',
+    });
+    setGradingModalOpen(true);
+  };
+
+  const saveGradingRule = async () => {
+    const min = Number(gradingForm.min_score);
+    const max = Number(gradingForm.max_score);
+    if (!gradingForm.grade || Number.isNaN(min) || Number.isNaN(max) || min < 0 || max > 100 || min > max) {
+      showToast('error', 'Enter a valid grade and score range from 0 to 100');
+      return;
+    }
+    const result = await call(editingGrade ? '/settings/grading-rules/' + editingGrade.id : '/settings/grading-rules', {
+      method: editingGrade ? 'PUT' : 'POST',
+      body: { ...gradingForm, min_score: min, max_score: max },
+    });
+    if (result.success) {
+      showToast('success', editingGrade ? 'Grading rule updated' : 'Grading rule created');
+      setGradingModalOpen(false);
+      const refreshed = await call('/settings/grading-rules');
+      if (refreshed.success && Array.isArray(refreshed.data)) setGradingRules(refreshed.data);
+    } else {
+      showToast('error', result.error || 'Failed to save grading rule');
+    }
+  };
+
+  const deleteGradingRule = async (id: string) => {
+    const result = await call('/settings/grading-rules/' + id, { method: 'DELETE' });
+    if (result.success) {
+      showToast('success', 'Grading rule deleted');
+      setGradingRules((rules) => rules.filter((rule) => rule.id !== id));
+    } else {
+      showToast('error', result.error || 'Failed to delete grading rule');
     }
   };
 
@@ -313,40 +363,133 @@ export default function SettingsPage() {
         </Card>
 
         <Card title="Grading Rules">
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Grade</th>
-                  <th>Min Score</th>
-                  <th>Max Score</th>
-                  <th>Remarks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gradingRules.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center text-gray-500 py-4">
-                      No grading rules configured
-                    </td>
-                  </tr>
-                ) : (
-                  gradingRules.map((rule) => (
-                    <tr key={rule.id}>
-                      <td className="font-bold">{rule.grade}</td>
-                      <td>{rule.min_score}%</td>
-                      <td>{rule.max_score}%</td>
-                      <td>{rule.remarks || '—'}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+  <div className="flex justify-end mb-4">
+    <Button variant="primary" onClick={() => openGradingModal()}>
+      Add Grade
+    </Button>
+  </div>
+
+  <div className="table-container">
+    <table className="table">
+      <thead>
+        <tr>
+          <th>Grade</th>
+          <th>Min Score</th>
+          <th>Max Score</th>
+          <th>Remarks</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {gradingRules.length === 0 ? (
+          <tr>
+            <td colSpan={5} className="text-center text-gray-500 py-4">
+              No grading rules configured
+            </td>
+          </tr>
+        ) : (
+          gradingRules.map((rule) => (
+            <tr key={rule.id}>
+              <td className="font-bold">{rule.grade}</td>
+              <td>{rule.min_score}%</td>
+              <td>{rule.max_score}%</td>
+              <td>{rule.remarks || '�'}</td>
+              <td>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => openGradingModal(rule)}>
+                    Edit
+                  </Button>
+                  <Button variant="danger" onClick={() => deleteGradingRule(rule.id)}>
+                    Delete
+                  </Button>
+                </div>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
+</Card>
+
+{gradingModalOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+      <h2 className="text-lg font-semibold mb-4">
+        {editingGrade ? 'Edit Grading Rule' : 'Add Grading Rule'}
+      </h2>
+
+      <div className="grid gap-4">
+        <div className="form-group">
+          <label className="form-label">Grade</label>
+          <input
+            className="form-input"
+            value={gradingForm.grade}
+            onChange={(e) => setGradingForm({ ...gradingForm, grade: e.target.value.toUpperCase() })}
+            placeholder="A"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="form-group">
+            <label className="form-label">Minimum Score</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              className="form-input"
+              value={gradingForm.min_score}
+              onChange={(e) => setGradingForm({ ...gradingForm, min_score: e.target.value })}
+            />
           </div>
-        </Card>
+
+          <div className="form-group">
+            <label className="form-label">Maximum Score</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              className="form-input"
+              value={gradingForm.max_score}
+              onChange={(e) => setGradingForm({ ...gradingForm, max_score: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Remarks</label>
+          <input
+            className="form-input"
+            value={gradingForm.remarks}
+            onChange={(e) => setGradingForm({ ...gradingForm, remarks: e.target.value })}
+            placeholder="Excellent"
+          />
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setGradingModalOpen(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={saveGradingRule}>
+            Save Grade
+          </Button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
 
 
