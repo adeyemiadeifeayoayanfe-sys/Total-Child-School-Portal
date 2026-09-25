@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import DatePicker from '../components/ui/DatePicker';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
 import { AcademicSession, UserRole } from '../types';
@@ -142,7 +143,7 @@ export default function SessionsPage() {
   };
 
   const formatDate = (date: string) => {
-    if (!date) return '—';
+    if (!date) return '�';
 
     return new Date(`${date}T00:00:00`).toLocaleDateString('en-NG', {
       day: 'numeric',
@@ -352,3 +353,5 @@ export default function SessionsPage() {
     </div>
   );
 }
+
+

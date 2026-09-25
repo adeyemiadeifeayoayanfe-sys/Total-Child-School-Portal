@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useApi } from '../hooks/useApi';
@@ -9,131 +9,234 @@ import {
 } from '../types';
 import { LoadingContainer } from '../components/ui/Spinner';
 import Card from '../components/ui/Card';
+
 export default function DashboardPage() {
   const { user, activeRole } = useAuth();
   const { call } = useApi();
   const navigate = useNavigate();
+
+  const currentRole = activeRole || user?.role || null;
+
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+
   useEffect(() => {
-    fetchDashboard();
-  }, [activeRole]);
-  async function fetchDashboard() {
-    setLoading(true);
-    const endpoint =
-      activeRole === 'teacher'
-        ? '/dashboard/teacher'
-        : activeRole === 'parent'
-          ? '/dashboard/parent'
-          : '/dashboard/admin';
-    const result = await call(endpoint);
-    if (result.success && result.data) {
-      setDashboardData(result.data);
+    let cancelled = false;
+
+    async function fetchDashboard() {
+      if (!currentRole) {
+        setDashboardData(null);
+        setDashboardError('No active role is available.');
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setDashboardData(null);
+      setDashboardError(null);
+
+      const endpoint =
+        currentRole === 'teacher'
+          ? '/dashboard/teacher'
+          : currentRole === 'parent'
+            ? '/dashboard/parent'
+            : '/dashboard/admin';
+
+      try {
+        const result = await call(endpoint);
+
+        if (cancelled) return;
+
+        if (result.success && result.data) {
+          setDashboardData(result.data);
+        } else {
+          setDashboardData(null);
+          setDashboardError(
+            result.error || 'Unable to load dashboard data.'
+          );
+        }
+      } catch (error: any) {
+        if (cancelled) return;
+
+        setDashboardData(null);
+        setDashboardError(
+          error?.message || 'Unable to load dashboard data.'
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
-    setLoading(false);
-  }
+
+    fetchDashboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentRole, call]);
+
   if (loading) {
     return <LoadingContainer text="Loading dashboard..." />;
   }
+
+  if (dashboardError) {
+    return (
+      <div className="empty-state">
+        <div className="empty-state-icon">ER</div>
+        <div className="empty-state-title">
+          Unable to load dashboard
+        </div>
+        <p>{dashboardError}</p>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => window.location.reload()}
+          style={{ marginTop: '1rem' }}
+        >
+          Reload Dashboard
+        </button>
+      </div>
+    );
+  }
+
   if (!dashboardData) {
     return (
       <div className="empty-state">
         <div className="empty-state-icon">DB</div>
-        <div className="empty-state-title">No dashboard data available</div>
+        <div className="empty-state-title">
+          No dashboard data available
+        </div>
       </div>
     );
   }
-  if (activeRole === 'admin' || activeRole === 'super_admin') {
-    const data = dashboardData as AdminDashboardData;
+
+  if (
+    currentRole === 'admin' ||
+    currentRole === 'super_admin'
+  ) {
+    const data = dashboardData as Partial<AdminDashboardData> & {
+      today_attendance?: {
+        present?: number;
+        total?: number;
+      };
+      today_payments?: {
+        total?: number;
+        count?: number;
+      };
+    };
+
+    const todayAttendance = data.today_attendance || { present: 0, total: 0 };
+    const todayPayments = data.today_payments || { total: 0, count: 0 };
+
     return (
       <div>
         <div className="page-header">
           <div>
             <h1 className="page-title">Dashboard</h1>
             <p className="page-description">
-              Welcome back, {user?.profile?.first_name}! Here&apos;s what&apos;s
+              Welcome back, {user?.profile?.first_name || 'User'}! Here&apos;s what&apos;s
               happening today.
             </p>
           </div>
         </div>
+
         <div className="dashboard-grid">
           <div className="stat-card">
             <div className="stat-icon stat-icon-blue">ST</div>
             <div className="stat-content">
-              <h3>{data.students}</h3>
+              <h3>{data.students ?? 0}</h3>
               <p>Students</p>
             </div>
           </div>
+
           <div className="stat-card">
             <div className="stat-icon stat-icon-green">TE</div>
             <div className="stat-content">
-              <h3>{data.teachers}</h3>
+              <h3>{data.teachers ?? 0}</h3>
               <p>Teachers</p>
             </div>
           </div>
+
           <div className="stat-card">
             <div className="stat-icon stat-icon-yellow">PR</div>
             <div className="stat-content">
-              <h3>{data.parents}</h3>
+              <h3>{data.parents ?? 0}</h3>
               <p>Parents</p>
             </div>
           </div>
+
           <div className="stat-card">
             <div className="stat-icon stat-icon-red">CL</div>
             <div className="stat-content">
-              <h3>{data.classes}</h3>
+              <h3>{data.classes ?? 0}</h3>
               <p>Classes</p>
             </div>
           </div>
         </div>
+
         <div className="dashboard-grid">
           <div className="stat-card">
             <div className="stat-icon stat-icon-green">AT</div>
             <div className="stat-content">
               <h3>
-                {data.today_attendance.present}/{data.today_attendance.total}
+                {todayAttendance.present ?? 0}/
+                {todayAttendance.total ?? 0}
               </h3>
               <p>Present Today</p>
             </div>
           </div>
+
           <div className="stat-card">
             <div className="stat-icon stat-icon-yellow">BR</div>
             <div className="stat-content">
-              <h3>{data.pending_broadsheets}</h3>
+              <h3>{data.pending_broadsheets ?? 0}</h3>
               <p>Pending Broadsheets</p>
             </div>
           </div>
+
           <div className="stat-card">
             <div className="stat-icon stat-icon-blue">RS</div>
             <div className="stat-content">
-              <h3>{data.generated_results}</h3>
+              <h3>{data.generated_results ?? 0}</h3>
               <p>Generated Results</p>
             </div>
           </div>
+
           <div className="stat-card">
             <div className="stat-icon stat-icon-red">PY</div>
             <div className="stat-content">
-              <h3>₦{data.today_payments.total.toLocaleString()}</h3>
-              <p>Today&apos;s Payments ({data.today_payments.count})</p>
+              <h3>
+                ?{Number(todayPayments.total ?? 0).toLocaleString()}
+              </h3>
+              <p>
+                Today&apos;s Payments ({todayPayments.count ?? 0})
+              </p>
             </div>
           </div>
         </div>
+
         <div className="dashboard-grid">
           <div className="stat-card">
             <div className="stat-icon stat-icon-blue">CS</div>
             <div className="stat-content">
-              <h3>₦{data.cashbook_balance.toLocaleString()}</h3>
+              <h3>
+                ?{Number(data.cashbook_balance ?? 0).toLocaleString()}
+              </h3>
               <p>Cashbook Balance</p>
             </div>
           </div>
+
           <div className="stat-card">
             <div className="stat-icon stat-icon-yellow">RC</div>
             <div className="stat-content">
-              <h3>{data.receipt_queue}</h3>
+              <h3>{data.receipt_queue ?? 0}</h3>
               <p>Receipt Queue</p>
             </div>
           </div>
         </div>
+
         <div className="dashboard-grid">
           <button
             type="button"
@@ -152,6 +255,7 @@ export default function DashboardPage() {
               <p>Unread Notifications</p>
             </div>
           </button>
+
           <button
             type="button"
             className="stat-card"
@@ -173,50 +277,59 @@ export default function DashboardPage() {
       </div>
     );
   }
-  if (activeRole === 'teacher') {
+
+  if (currentRole === 'teacher') {
     const data = dashboardData as TeacherDashboardData;
+
     return (
       <div>
         <div className="page-header">
           <div>
             <h1 className="page-title">
-              Good morning, {user?.profile?.first_name}!
+              Good morning, {user?.profile?.first_name || 'Teacher'}!
             </h1>
             <p className="page-description">
               Here&apos;s your teaching overview for today.
             </p>
           </div>
         </div>
+
         <div className="dashboard-grid">
           <div className="stat-card">
             <div className="stat-icon stat-icon-blue">CL</div>
             <div className="stat-content">
-              <h3>{data.total_classes}</h3>
+              <h3>{data.total_classes ?? 0}</h3>
               <p>My Classes</p>
             </div>
           </div>
+
           <div className="stat-card">
             <div className="stat-icon stat-icon-green">SB</div>
             <div className="stat-content">
-              <h3>{data.total_subjects}</h3>
+              <h3>{data.total_subjects ?? 0}</h3>
               <p>My Subjects</p>
             </div>
           </div>
+
           <div className="stat-card">
             <div className="stat-icon stat-icon-yellow">BR</div>
             <div className="stat-content">
-              <h3>{data.pending_broadsheet_count}</h3>
+              <h3>{data.pending_broadsheet_count ?? 0}</h3>
               <p>Pending Broadsheets</p>
             </div>
           </div>
+
           <div className="stat-card">
             <div className="stat-icon stat-icon-red">AT</div>
             <div className="stat-content">
-              <h3>{data.today_attendance_taken ? 'Done' : 'Pending'}</h3>
+              <h3>
+                {data.today_attendance_taken ? 'Done' : 'Pending'}
+              </h3>
               <p>Today&apos;s Attendance</p>
             </div>
           </div>
         </div>
+
         <div className="dashboard-grid">
           <button
             type="button"
@@ -235,6 +348,7 @@ export default function DashboardPage() {
               <p>Unread Notifications</p>
             </div>
           </button>
+
           <button
             type="button"
             className="stat-card"
@@ -253,7 +367,8 @@ export default function DashboardPage() {
             </div>
           </button>
         </div>
-        {data.classes.length > 0 && (
+
+        {Array.isArray(data.classes) && data.classes.length > 0 && (
           <Card title="My Classes" className="no-print">
             <div className="table-container">
               <table className="table">
@@ -266,8 +381,8 @@ export default function DashboardPage() {
                 <tbody>
                   {data.classes.map((cls: any, index: number) => (
                     <tr key={index}>
-                      <td>{cls.class?.name}</td>
-                      <td>{cls.session?.name}</td>
+                      <td>{cls?.class?.name || 'Unnamed class'}</td>
+                      <td>{cls?.session?.name || 'Current session'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -278,21 +393,27 @@ export default function DashboardPage() {
       </div>
     );
   }
-  if (activeRole === 'parent') {
+
+  if (currentRole === 'parent') {
     const data = dashboardData as ParentDashboardData;
+
     return (
       <div>
         <div className="page-header">
           <div>
             <h1 className="page-title">
-              Welcome, {user?.profile?.first_name}!
+              Welcome, {user?.profile?.first_name || 'Parent'}!
             </h1>
             <p className="page-description">
               Here&apos;s an overview of your children.
             </p>
           </div>
         </div>
-        <div className="dashboard-grid" style={{ marginBottom: '1rem' }}>
+
+        <div
+          className="dashboard-grid"
+          style={{ marginBottom: '1rem' }}
+        >
           <button
             type="button"
             className="stat-card"
@@ -310,6 +431,7 @@ export default function DashboardPage() {
               <p>Unread Notifications</p>
             </div>
           </button>
+
           <button
             type="button"
             className="stat-card"
@@ -328,20 +450,27 @@ export default function DashboardPage() {
             </div>
           </button>
         </div>
-        {data.children.length === 0 ? (
+
+        {!Array.isArray(data.children) ||
+        data.children.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">CH</div>
-            <div className="empty-state-title">No children assigned</div>
+            <div className="empty-state-title">
+              No children assigned
+            </div>
             <p>
-              Please contact the school administration to link your children.
+              Please contact the school administration to link your
+              children.
             </p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '1rem' }}>
-            {data.children.map((child, index) => (
+            {data.children.map((child: any, index: number) => (
               <Card
                 key={index}
-                title={`${child.student.first_name} ${child.student.last_name}`}
+                title={`${child?.student?.first_name || ''} ${
+                  child?.student?.last_name || ''
+                }`.trim() || 'Student'}
               >
                 <div
                   style={{
@@ -361,9 +490,11 @@ export default function DashboardPage() {
                       Class
                     </p>
                     <p style={{ fontWeight: 600 }}>
-                      {child.student.current_class?.name || 'Not assigned'}
+                      {child?.student?.current_class?.name ||
+                        'Not assigned'}
                     </p>
                   </div>
+
                   <div>
                     <p
                       style={{
@@ -374,11 +505,12 @@ export default function DashboardPage() {
                       Latest Result
                     </p>
                     <p style={{ fontWeight: 600 }}>
-                      {child.latest_result
+                      {child?.latest_result
                         ? `${child.latest_result.term_average}%`
                         : 'No results yet'}
                     </p>
                   </div>
+
                   <div>
                     <p
                       style={{
@@ -389,8 +521,10 @@ export default function DashboardPage() {
                       Recent Payment
                     </p>
                     <p style={{ fontWeight: 600 }}>
-                      {child.recent_payments[0]
-                        ? `₦${child.recent_payments[0].amount.toLocaleString()}`
+                      {child?.recent_payments?.[0]
+                        ? `?${Number(
+                            child.recent_payments[0].amount || 0
+                          ).toLocaleString()}`
                         : 'No payments'}
                     </p>
                   </div>
@@ -402,5 +536,13 @@ export default function DashboardPage() {
       </div>
     );
   }
-  return null;
+
+  return (
+    <div className="empty-state">
+      <div className="empty-state-icon">RL</div>
+      <div className="empty-state-title">Role not supported</div>
+      <p>Please sign in again.</p>
+    </div>
+  );
 }
+

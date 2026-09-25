@@ -10,6 +10,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { StatusBadge } from '../components/ui/Badge';
 
 interface SubjectDetails extends Subject {
+  class_count?: number;
   class_subject_assignments?: Array<{
     id: string;
     class?: {
@@ -239,6 +240,11 @@ export default function SubjectsPage() {
       render: (subject: Subject) => subject.code || '—',
     },
     {
+      key: 'class_count',
+      header: 'Classes',
+      render: (subject: Subject & { class_count?: number }) => subject.class_count ?? 0,
+    },
+    {
       key: 'status',
       header: 'Status',
       render: (subject: Subject) => (
@@ -457,7 +463,7 @@ export default function SubjectsPage() {
               <div>
                 <div className="text-sm text-gray-500">Class Assignments</div>
                 <div className="font-semibold">
-                  {details.class_subject_assignments?.length || 0}
+                  {details.class_count ?? details.class_subject_assignments?.length ?? 0}
                 </div>
               </div>
             </div>
@@ -563,3 +569,4 @@ export default function SubjectsPage() {
     </div>
   );
 }
+

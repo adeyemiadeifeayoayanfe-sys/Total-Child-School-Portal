@@ -1,3 +1,4 @@
+import DatePicker from '../components/ui/DatePicker';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
@@ -232,13 +233,7 @@ export default function AttendancePage() {
           <p className="page-description">Daily attendance tracking and history</p>
         </div>
         <div className="page-actions">
-          <input
-            type="date"
-            className="form-input"
-            value={attendanceDate}
-            onChange={(e) => setAttendanceDate(e.target.value)}
-            style={{ maxWidth: '180px' }}
-          />
+          <DatePicker value={attendanceDate} onChange={setAttendanceDate} className="max-w-[180px]" />
           {isTeacher && (
             <Button variant="primary" onClick={fetchStudentsForAttendance} disabled={!selectedClass}>
               Take Attendance
@@ -281,5 +276,7 @@ export default function AttendancePage() {
     </div>
   );
 }
+
+
 
 

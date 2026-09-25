@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import DatePicker from '../components/ui/DatePicker';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
 import { Teacher, Class, AcademicSession, Subject } from '../types';
@@ -478,7 +479,7 @@ export default function TeachersPage() {
       key: 'qualification',
       header: 'Qualification',
       render: (teacher: Teacher) =>
-        teacher.qualification || '—',
+        teacher.qualification || '�',
     },
     {
       key: 'status',
@@ -1195,4 +1196,6 @@ export default function TeachersPage() {
     </div>
   );
 }
+
+
 

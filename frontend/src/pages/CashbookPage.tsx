@@ -1,3 +1,4 @@
+import DatePicker from '../components/ui/DatePicker';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
@@ -219,12 +220,7 @@ export default function CashbookPage() {
           </div>
           <div className="form-group">
             <label className="form-label">Date</label>
-            <input
-              type="date"
-              className="form-input"
-              value={formData.transaction_date}
-              onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
-            />
+            <DatePicker value={formData.transaction_date} onChange={(value) => setFormData({ ...formData, transaction_date: value })} />
           </div>
           <div className="form-group">
             <label className="form-label">Description</label>
@@ -244,3 +240,5 @@ export default function CashbookPage() {
     </div>
   );
 }
+
+

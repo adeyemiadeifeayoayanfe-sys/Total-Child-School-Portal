@@ -1,3 +1,4 @@
+import DatePicker from '../components/ui/DatePicker';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
@@ -227,12 +228,7 @@ export default function PaymentsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="form-group">
               <label className="form-label">Date</label>
-              <input
-                type="date"
-                className="form-input"
-                value={formData.payment_date}
-                onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-              />
+              <DatePicker value={formData.payment_date} onChange={(value) => setFormData({ ...formData, payment_date: value })} />
             </div>
             <div className="form-group">
               <label className="form-label">Payment Method</label>
@@ -257,6 +253,8 @@ export default function PaymentsPage() {
     </div>
   );
 }
+
+
 
 
 
