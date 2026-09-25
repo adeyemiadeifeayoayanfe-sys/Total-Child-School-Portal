@@ -134,7 +134,7 @@ export default function ScoresPage() {
     } finally {
       setAssignmentLoading(false);
     }
-  }, [call, selectedClass, showToast]);
+  }, [call, showToast]);
 
   useEffect(() => {
     fetchTeacherData();
@@ -636,3 +636,4 @@ export default function ScoresPage() {
     </div>
   );
 }
+
