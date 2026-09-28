@@ -47,7 +47,6 @@ export async function createTeacher(input: CreateTeacherInput, createdBy: string
     const { data: failedUser } = await supabaseAdmin.from('users').select('auth_id').eq('id', user.id).maybeSingle();
     await supabaseAdmin.from('users').delete().eq('id', user.id);
     if (failedUser?.auth_id) await supabaseAdmin.auth.admin.deleteUser(failedUser.auth_id);
-    if (failedUser?.auth_id) await supabaseAdmin.auth.admin.deleteUser(failedUser.auth_id);
     console.error('Teacher creation error:', error);
     throw new AppError('Failed to create teacher record', 500);
   }

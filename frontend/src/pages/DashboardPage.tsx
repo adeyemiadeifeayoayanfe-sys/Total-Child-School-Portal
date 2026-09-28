@@ -18,6 +18,7 @@ export default function DashboardPage() {
   const currentRole = activeRole || user?.role || null;
 
   const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardDataRole, setDashboardDataRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
 
@@ -33,7 +34,6 @@ export default function DashboardPage() {
       }
 
       setLoading(true);
-      setDashboardData(null);
       setDashboardError(null);
 
       const endpoint =
@@ -50,8 +50,10 @@ export default function DashboardPage() {
 
         if (result.success && result.data) {
           setDashboardData(result.data);
+          setDashboardDataRole(currentRole);
         } else {
           setDashboardData(null);
+          setDashboardDataRole(null);
           setDashboardError(
             result.error || 'Unable to load dashboard data.'
           );
@@ -60,6 +62,7 @@ export default function DashboardPage() {
         if (cancelled) return;
 
         setDashboardData(null);
+        setDashboardDataRole(null);
         setDashboardError(
           error?.message || 'Unable to load dashboard data.'
         );
@@ -99,6 +102,12 @@ export default function DashboardPage() {
         </button>
       </div>
     );
+  }
+
+  // Do not render one role's payload through another role's dashboard while
+  // the newly selected role's request is still in flight.
+  if (dashboardData && dashboardDataRole !== currentRole) {
+    return <LoadingContainer text="Loading dashboard..." />;
   }
 
   if (!dashboardData) {
@@ -170,7 +179,7 @@ export default function DashboardPage() {
           <div className="stat-card">
             <div className="stat-icon stat-icon-red">CL</div>
             <div className="stat-content">
-              <h3>{data.classes ?? 0}</h3>
+              <h3>{typeof data.classes === 'number' ? data.classes : 0}</h3>
               <p>Classes</p>
             </div>
           </div>

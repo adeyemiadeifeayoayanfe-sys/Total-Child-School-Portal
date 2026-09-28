@@ -32,6 +32,14 @@ export default function ProfilePage() {
 
     if (result.success) {
       showToast('success', 'Profile updated successfully');
+      if (result.data) {
+        setFormData({
+          first_name: result.data.first_name || '',
+          last_name: result.data.last_name || '',
+          phone: result.data.phone || '',
+          address: result.data.address || '',
+        });
+      }
       await refreshUser();
     } else {
       showToast('error', result.error || 'Failed to update profile');
