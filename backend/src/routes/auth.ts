@@ -20,6 +20,7 @@ import {
   resetPasswordSchema,
   createUserSchema,
   updateUserRolesSchema,
+  updateUserSchema,
 } from '../validators/auth';
 import {
   createUser,
@@ -407,6 +408,57 @@ router.post(
 );
 
 /**
+ * PUT /api/auth/profile
+ * Update the currently authenticated user's profile.
+ */
+router.put(
+  '/profile',
+  authenticate,
+  validate(updateUserSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.authUserId!;
+
+      const profile = {
+        user_id: userId,
+        first_name: req.body.first_name?.trim(),
+        last_name: req.body.last_name?.trim(),
+        phone:
+          typeof req.body.phone === 'string'
+            ? req.body.phone.trim() || null
+            : req.body.phone ?? null,
+        address:
+          typeof req.body.address === 'string'
+            ? req.body.address.trim() || null
+            : req.body.address ?? null,
+        avatar_url: req.body.avatar_url ?? null,
+      };
+
+      const { data, error } = await supabaseAdmin
+        .from('profiles')
+        .upsert(profile, { onConflict: 'user_id' })
+        .select('*')
+        .single();
+
+      if (error) {
+        throw new AppError(
+          error.message || 'Failed to update profile',
+          400
+        );
+      }
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * GET /api/auth/me
  */
 router.get(
@@ -638,10 +690,3 @@ router.post(
 );
 
 export default router;
-
-
-
-
-
-
-
