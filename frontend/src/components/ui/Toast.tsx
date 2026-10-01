@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -22,7 +22,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const showToast = useCallback((type: ToastType, message: string) => {
     const id = ++toastId;
     setToasts((prev) => [...prev, { id, type, message }]);
-    
+
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 5000);
@@ -33,14 +33,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div className="toast-container" role="status" aria-live="polite">
         {toasts.map((toast) => (
-          <div 
-            key={toast.id} 
+          <div
+            key={toast.id}
             className={`toast toast-${toast.type}`}
             role="alert"
           >
             <span className="toast-icon" aria-hidden="true">
-              {toast.type === 'success' && '✓“'}
-              {toast.type === 'error' && '✓—'}
+              {toast.type === 'success' && '?'}
+              {toast.type === 'error' && '�'}
               {toast.type === 'warning' && '!'}
               {toast.type === 'info' && 'i'}
             </span>
@@ -59,4 +59,3 @@ export function useToast(): ToastContextType {
   }
   return context;
 }
-

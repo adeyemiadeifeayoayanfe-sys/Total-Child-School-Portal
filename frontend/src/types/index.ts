@@ -23,6 +23,7 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+  assessment_stage?: AssessmentStage;
 }
 
 export interface PaginatedResponse<T> {
@@ -368,6 +369,7 @@ export interface Notification {
   metadata: Record<string, any>;
   created_at: string;
 }
+
 
 
 
