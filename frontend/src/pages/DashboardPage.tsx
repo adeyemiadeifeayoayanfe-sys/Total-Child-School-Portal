@@ -222,7 +222,7 @@ export default function DashboardPage() {
             <div className="stat-icon stat-icon-red">PY</div>
             <div className="stat-content">
               <h3>
-                ?{Number(todayPayments.total ?? 0).toLocaleString()}
+                ₦{Number(todayPayments.total ?? 0).toLocaleString()}
               </h3>
               <p>
                 Today&apos;s Payments ({todayPayments.count ?? 0})
@@ -236,7 +236,7 @@ export default function DashboardPage() {
             <div className="stat-icon stat-icon-blue">CS</div>
             <div className="stat-content">
               <h3>
-                ?{Number(data.cashbook_balance ?? 0).toLocaleString()}
+                ₦{Number(data.cashbook_balance ?? 0).toLocaleString()}
               </h3>
               <p>Cashbook Balance</p>
             </div>
@@ -592,7 +592,7 @@ export default function DashboardPage() {
                     </p>
                     <p style={{ fontWeight: 600 }}>
                       {child?.recent_payments?.[0]
-                        ? `?${Number(
+                        ? `₦${Number(
                             child.recent_payments[0].amount || 0
                           ).toLocaleString()}`
                         : 'No payments'}

@@ -218,8 +218,7 @@ export default function StudentsPage() {
     if (
       !formData.admission_number ||
       !formData.first_name ||
-      !formData.last_name ||
-      !formData.date_of_birth
+      !formData.last_name
     ) {
       showToast(
         'error',
@@ -232,7 +231,7 @@ export default function StudentsPage() {
 
     const result = await call('/students', {
       method: 'POST',
-      body: { ...formData, address: formData.address || null, phone: formData.phone || null, email: formData.email || null, middle_name: formData.middle_name || null, admission_date: formData.admission_date || undefined },
+      body: { ...formData, date_of_birth: formData.date_of_birth || null, address: formData.address || null, phone: formData.phone || null, email: formData.email || null, middle_name: formData.middle_name || null, admission_date: formData.admission_date || undefined },
     });
 
     if (result.success) {
@@ -263,7 +262,7 @@ export default function StudentsPage() {
       `/students/${selectedStudent.id}`,
       {
         method: 'PUT',
-        body: { ...formData, address: formData.address || null, phone: formData.phone || null, email: formData.email || null, middle_name: formData.middle_name || null, admission_date: formData.admission_date || undefined },
+        body: { ...formData, date_of_birth: formData.date_of_birth || null, address: formData.address || null, phone: formData.phone || null, email: formData.email || null, middle_name: formData.middle_name || null, admission_date: formData.admission_date || undefined },
       }
     );
 
@@ -334,7 +333,7 @@ export default function StudentsPage() {
       first_name: student.first_name,
       last_name: student.last_name,
       middle_name: student.middle_name || '',
-      date_of_birth: student.date_of_birth,
+      date_of_birth: student.date_of_birth || '',
       gender: student.gender,
       address: student.address || '',
       phone: student.phone || '',
@@ -612,7 +611,7 @@ export default function StudentsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="form-group">
               <label className="form-label">
-                Date of Birth
+                Date of Birth (Optional)
               </label>
 
               <input
@@ -757,7 +756,7 @@ export default function StudentsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="form-group">
               <label className="form-label">
-                Date of Birth
+                Date of Birth (Optional)
               </label>
 
               <input

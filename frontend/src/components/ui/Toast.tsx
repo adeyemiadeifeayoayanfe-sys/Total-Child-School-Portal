@@ -38,12 +38,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className={`toast toast-${toast.type}`}
             role="alert"
           >
-            <span className="toast-icon" aria-hidden="true">
-              {toast.type === 'success' && '?'}
-              {toast.type === 'error' && '×'}
-              {toast.type === 'warning' && '!'}
-              {toast.type === 'info' && 'i'}
-            </span>
             {toast.message}
           </div>
         ))}

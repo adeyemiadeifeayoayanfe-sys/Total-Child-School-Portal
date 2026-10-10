@@ -134,7 +134,7 @@ export default function PaymentsPage() {
       key: 'amount',
       header: 'Amount',
       render: (payment: Payment) => (
-        <span className="font-semibold">?{payment.amount.toLocaleString()}</span>
+        <span className="font-semibold">₦{payment.amount.toLocaleString()}</span>
       ),
     },
     {
@@ -205,7 +205,7 @@ export default function PaymentsPage() {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Amount (?)</label>
+            <label className="form-label">Amount (₦)</label>
             <input
               type="number"
               min="0"

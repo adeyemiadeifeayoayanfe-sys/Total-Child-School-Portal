@@ -65,7 +65,10 @@ async function ensureAppUserForAuthUser(
   const { data: existingUser, error: userLookupError } =
     await supabaseAdmin
       .from('users')
-      .select('*')
+      .select(`
+        *,
+        profile:profiles(*)
+      `)
       .eq('auth_id', authId)
       .maybeSingle();
 
@@ -76,9 +79,7 @@ async function ensureAppUserForAuthUser(
     );
   }
 
-  if (existingUser) {
-    return existingUser;
-  }
+  if (existingUser) return existingUser;
 
   const emailKey = email.toLowerCase();
   const bootstrapProfile =

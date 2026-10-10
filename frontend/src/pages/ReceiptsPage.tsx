@@ -100,7 +100,7 @@ export default function ReceiptsPage() {
           </div>
           <div class="print-field print-amount">
             <span>Amount Paid</span>
-            <strong>?${Number(receipt.amount).toLocaleString()}</strong>
+            <strong>₦${Number(receipt.amount).toLocaleString()}</strong>
           </div>
         </div>
         <div class="print-receipt-footer">
@@ -371,7 +371,7 @@ export default function ReceiptsPage() {
       header: 'Amount',
       render: (receipt: Receipt) => (
         <span className="font-semibold">
-          ?{Number(receipt.amount).toLocaleString()}
+          ₦{Number(receipt.amount).toLocaleString()}
         </span>
       ),
     },
@@ -507,7 +507,7 @@ export default function ReceiptsPage() {
               <div className="receipt-row receipt-total">
                 <span>Amount:</span>
                 <strong>
-                  ?{Number(selectedReceipt.amount).toLocaleString()}
+                  ₦{Number(selectedReceipt.amount).toLocaleString()}
                 </strong>
               </div>
             </div>

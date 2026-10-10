@@ -157,7 +157,7 @@ export default function ParentChildrenPage() {
   );
   const latestResult = results[0] || null;
   const formatCurrency = (amount: number) =>
-    `?${Number(amount || 0).toLocaleString()}`;
+    `₦${Number(amount || 0).toLocaleString()}`;
   const resultColumns = [
     {
       key: 'subject',
@@ -465,7 +465,7 @@ export default function ParentChildrenPage() {
                     results.map((result) => (
                       <Card
                         key={result.id}
-                        title={`${result.session?.name || 'Session'} � ${result.term?.name || 'Term'}`}
+                        title={`${result.session?.name || 'Session'} • ${result.term?.name || 'Term'}`}
                       >
                         <div className="mb-4 grid gap-4 md:grid-cols-3">
                           <div>

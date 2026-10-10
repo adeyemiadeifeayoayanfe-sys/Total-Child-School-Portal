@@ -1,0 +1,2 @@
+ALTER TABLE public.students
+  ALTER COLUMN date_of_birth DROP NOT NULL;

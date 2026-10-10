@@ -8,7 +8,7 @@ interface CreateStudentInput {
   first_name: string;
   last_name: string;
   middle_name?: string | null;
-  date_of_birth: string;
+  date_of_birth?: string | null;
   gender: string;
   address?: string | null;
   phone?: string | null;
@@ -36,7 +36,7 @@ export async function createStudent(input: CreateStudentInput, createdBy: string
       first_name: input.first_name,
       last_name: input.last_name,
       middle_name: input.middle_name || null,
-      date_of_birth: input.date_of_birth,
+      date_of_birth: input.date_of_birth || null,
       gender: input.gender,
       address: input.address || null,
       phone: input.phone || null,

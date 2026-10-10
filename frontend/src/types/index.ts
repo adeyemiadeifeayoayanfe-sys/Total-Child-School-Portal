@@ -107,7 +107,7 @@ export interface Student {
   first_name: string;
   last_name: string;
   middle_name: string | null;
-  date_of_birth: string;
+  date_of_birth: string | null;
   admission_date: string | null;
   gender: Gender;
   address: string | null;
