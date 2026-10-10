@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
 import { Class, Subject, AcademicSession } from '../types';
@@ -49,6 +50,7 @@ interface ClassDetails extends Class {
 export default function ClassesPage() {
   const { call } = useApi();
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   const [classes, setClasses] = useState<Class[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -61,7 +63,6 @@ export default function ClassesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSubjectModal, setShowSubjectModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
   const [showActivateDialog, setShowActivateDialog] = useState(false);
 
@@ -219,24 +220,6 @@ export default function ClassesPage() {
     setSubmitting(false);
   };
 
-  const openDetailsModal = async (cls: Class) => {
-    setSelectedClass(cls);
-    setClassDetails(null);
-    setShowDetailsModal(true);
-    setLoadingDetails(true);
-
-    const result = await call(`/classes/${cls.id}`);
-
-    if (result.success && result.data) {
-      setClassDetails(result.data);
-    } else {
-      showToast('error', result.error || 'Failed to load class details');
-      setShowDetailsModal(false);
-    }
-
-    setLoadingDetails(false);
-  };
-
   const openSubjectModal = async (cls: Class) => {
     setSelectedClass(cls);
     setClassDetails(null);
@@ -381,7 +364,7 @@ export default function ClassesPage() {
     {
       key: 'description',
       header: 'Description',
-      render: (cls: Class) => cls.description || '—',
+      render: (cls: Class) => cls.description || 'â€”',
     },
     {
       key: 'students',
@@ -405,7 +388,7 @@ export default function ClassesPage() {
       header: 'Actions',
       render: (cls: Class) => (
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" onClick={() => openDetailsModal(cls)}>
+          <Button variant="secondary" size="sm" onClick={() => navigate(`/classes/${cls.id}`)}>
             View
           </Button>
 
@@ -566,7 +549,7 @@ export default function ClassesPage() {
       <Modal
         open={showSubjectModal}
         onClose={() => !submitting && setShowSubjectModal(false)}
-        title={selectedClass ? `Manage Subjects — ${selectedClass.name}` : 'Manage Subjects'}
+        title={selectedClass ? `Manage Subjects â€” ${selectedClass.name}` : 'Manage Subjects'}
       >
         {loadingDetails ? (
           <div className="py-8 text-center">Loading subjects...</div>
@@ -637,137 +620,6 @@ export default function ClassesPage() {
             >
               Save Subjects
             </Button>
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        open={showDetailsModal}
-        onClose={() => setShowDetailsModal(false)}
-        title={classDetails ? `${classDetails.name} Details` : 'Class Details'}
-      >
-        {loadingDetails ? (
-          <div className="py-8 text-center">Loading class details...</div>
-        ) : classDetails ? (
-          <div className="grid gap-6">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-lg border p-4">
-                <div className="text-sm text-gray-500">Status</div>
-                <div className="mt-1">
-                  <StatusBadge
-                    status={classDetails.is_active ? 'active' : 'inactive'}
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-lg border p-4">
-                <div className="text-sm text-gray-500">Students</div>
-                <div className="mt-1 text-xl font-semibold">
-                  {classDetails.student_count ??
-                    classDetails.enrollments?.filter(
-                      (enrollment) => !enrollment.unenrolled_at
-                    ).length ??
-                    0}
-                </div>
-              </div>
-
-              <div className="rounded-lg border p-4">
-                <div className="text-sm text-gray-500">Subjects</div>
-                <div className="mt-1 text-xl font-semibold">
-                  {classDetails.subject_count ??
-                    classDetails.class_subject_assignments?.length ??
-                    0}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="mb-3 font-semibold">Assigned Teachers</h3>
-
-              {classDetails.teacher_class_assignments?.length ? (
-                <div className="grid gap-2">
-                  {classDetails.teacher_class_assignments.map((assignment) => (
-                    <div key={assignment.id} className="rounded-lg border p-3">
-                      <div className="font-medium">
-                        {assignment.teacher?.profile?.first_name || ''}{' '}
-                        {assignment.teacher?.profile?.last_name || ''}
-                      </div>
-
-                      {assignment.is_class_teacher && (
-                        <div className="text-sm text-gray-500">
-                          Class Teacher
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  No teachers assigned to this class.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <h3 className="mb-3 font-semibold">Assigned Subjects</h3>
-
-              {classDetails.class_subject_assignments?.length ? (
-                <div className="grid gap-2">
-                  {classDetails.class_subject_assignments.map((assignment) => (
-                    <div key={assignment.id} className="rounded-lg border p-3">
-                      <div className="font-medium">
-                        {getSubjectName(assignment.subject)}
-                      </div>
-
-                      {assignment.session?.name && (
-                        <div className="text-sm text-gray-500">
-                          {assignment.session.name}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  No subjects assigned to this class.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <h3 className="mb-3 font-semibold">Student Roster</h3>
-
-              {classDetails.enrollments?.filter(
-                (enrollment) => !enrollment.unenrolled_at
-              ).length ? (
-                <div className="grid gap-2">
-                  {classDetails.enrollments
-                    .filter((enrollment) => !enrollment.unenrolled_at)
-                    .map((enrollment) => (
-                      <div key={enrollment.id} className="rounded-lg border p-3">
-                        <div className="font-medium">
-                          {enrollment.student?.first_name || ''}{' '}
-                          {enrollment.student?.last_name || ''}
-                        </div>
-
-                        {enrollment.student?.admission_number && (
-                          <div className="text-sm text-gray-500">
-                            {enrollment.student.admission_number}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  No students are currently enrolled in this class.
-                </p>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="py-8 text-center text-gray-500">
-            No class details available.
           </div>
         )}
       </Modal>

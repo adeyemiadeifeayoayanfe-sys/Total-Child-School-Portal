@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
@@ -22,6 +22,15 @@ export default function ProfilePage() {
   });
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+
+  useEffect(() => {
+    setFormData({
+      first_name: user?.profile?.first_name || '',
+      last_name: user?.profile?.last_name || '',
+      phone: user?.profile?.phone || '',
+      address: user?.profile?.address || '',
+    });
+  }, [user?.profile?.address, user?.profile?.first_name, user?.profile?.last_name, user?.profile?.phone]);
 
   const handleSaveProfile = async () => {
     setSaving(true);

@@ -18,6 +18,7 @@ import StudentsPage from './pages/StudentsPage';
 import TeachersPage from './pages/TeachersPage';
 import ParentsPage from './pages/ParentsPage';
 import ClassesPage from './pages/ClassesPage';
+import ClassDetailsPage from './pages/ClassDetailsPage';
 import SubjectsPage from './pages/SubjectsPage';
 import SessionsPage from './pages/SessionsPage';
 
@@ -33,6 +34,7 @@ import ReceiptsPage from './pages/ReceiptsPage';
 import SettingsPage from './pages/SettingsPage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import UsersPage from './pages/UsersPage';
+import ScoreReviewPage from './pages/ScoreReviewPage';
 
 import ProfilePage from './pages/ProfilePage';
 import ParentChildrenPage from './pages/ParentChildrenPage';
@@ -177,6 +179,15 @@ export default function App() {
                 allowedRoles={['admin', 'super_admin']}
               >
                 <ClassesPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/classes/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                <ClassDetailsPage />
               </ProtectedRoute>
             }
           />
@@ -354,6 +365,15 @@ export default function App() {
                 allowedRoles={['super_admin']}
               >
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/score-review"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin']}>
+                <ScoreReviewPage />
               </ProtectedRoute>
             }
           />

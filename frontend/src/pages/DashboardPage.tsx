@@ -186,16 +186,21 @@ export default function DashboardPage() {
         </div>
 
         <div className="dashboard-grid">
-          <div className="stat-card">
+          <button
+            type="button"
+            className="stat-card"
+            onClick={() => navigate('/attendance')}
+            style={{ border: 'none', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}
+          >
             <div className="stat-icon stat-icon-green">AT</div>
             <div className="stat-content">
               <h3>
                 {todayAttendance.present ?? 0}/
                 {todayAttendance.total ?? 0}
               </h3>
-              <p>Present Today</p>
+              <p>Attendance Overview</p>
             </div>
-          </div>
+          </button>
 
           <div className="stat-card">
             <div className="stat-icon stat-icon-yellow">BR</div>
@@ -357,7 +362,12 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="stat-card">
+          <button
+            type="button"
+            className="stat-card"
+            onClick={() => navigate('/attendance')}
+            style={{ border: 'none', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}
+          >
             <div className="stat-icon stat-icon-red">AT</div>
             <div className="stat-content">
               <h3>
@@ -365,7 +375,7 @@ export default function DashboardPage() {
               </h3>
               <p>Today&apos;s Attendance</p>
             </div>
-          </div>
+          </button>
         </div>
 
         <div className="dashboard-grid">

@@ -120,6 +120,7 @@ export default function Sidebar({
       label: 'System',
       items: [
         { to: '/settings', icon: 'SE', label: 'Settings' },
+        { to: '/score-review', icon: 'SR', label: 'Score Review' },
         { to: '/audit-logs', icon: 'AU', label: 'Audit Logs' },
         { to: '/users', icon: 'US', label: 'Users' },
       ],

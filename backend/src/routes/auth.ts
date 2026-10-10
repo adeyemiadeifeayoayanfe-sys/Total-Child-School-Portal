@@ -447,6 +447,10 @@ router.put(
         );
       }
 
+      if (data.user_id !== userId) {
+        throw new AppError('Profile update could not be verified', 500);
+      }
+
       res.json({
         success: true,
         message: 'Profile updated successfully',

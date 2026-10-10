@@ -2,8 +2,9 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 import { authenticate, authorizeAdmin } from '../middleware/auth';
 import { validate } from '../middleware/validation';
-import { AppError, NotFoundError } from '../middleware/errorHandler';
+import { AppError, NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { createClassSchema, updateClassSchema } from '../validators/class';
+import { ensureTeacherAssignedToClass, getTeacherRecordForUser } from '../services/accessService';
 
 const router = Router();
 
@@ -254,9 +255,32 @@ router.put('/:id/subjects', authenticate, authorizeAdmin, async (req: Request, r
   }
 });
 
-router.get('/:id/roster', authenticate, authorizeAdmin, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id/roster', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { session_id } = req.query;
+
+    if (req.user?.role === 'teacher') {
+      let effectiveSessionId = session_id as string | undefined;
+
+      if (!effectiveSessionId) {
+        const { data: currentSession, error: currentSessionError } = await supabaseAdmin
+          .from('academic_sessions')
+          .select('id')
+          .eq('is_current', true)
+          .maybeSingle();
+
+        if (currentSessionError || !currentSession) {
+          throw new NotFoundError('No current session found');
+        }
+
+        effectiveSessionId = currentSession.id;
+      }
+
+      const teacher = await getTeacherRecordForUser(req.authUserId!);
+      await ensureTeacherAssignedToClass(teacher.id, req.params.id, effectiveSessionId!);
+    } else if (req.user?.role !== 'admin' && req.user?.role !== 'super_admin') {
+      throw new ForbiddenError('You do not have permission to view this class roster');
+    }
 
     let query = supabaseAdmin
       .from('enrollments')

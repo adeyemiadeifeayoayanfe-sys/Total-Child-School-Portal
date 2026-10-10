@@ -27,6 +27,7 @@ import announcementRoutes from './routes/announcements';
 import auditLogRoutes from './routes/auditLogs';
 import settingsRoutes from './routes/settings';
 import dashboardRoutes from './routes/dashboard';
+import scoreReviewRoutes from './routes/scoreReview';
 
 dotenv.config();
 
@@ -101,6 +102,7 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/score-review', scoreReviewRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

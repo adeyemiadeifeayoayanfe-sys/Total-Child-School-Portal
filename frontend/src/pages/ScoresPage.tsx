@@ -1,18 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
-import { Score } from '../types';
+import { AssessmentStage, Score, Term } from '../types';
 import Table from '../components/ui/Table';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
-
-type AssessmentStage =
-  | 'classes'
-  | 'first_test'
-  | 'second_test'
-  | 'third_test'
-  | 'examination';
 
 const stageLabels: Record<AssessmentStage, string> = {
   classes: 'Classes',
@@ -76,6 +69,7 @@ export default function ScoresPage() {
     useState<AssessmentStage>('classes');
 
   const [termId, setTermId] = useState('');
+  const [currentTermLoading, setCurrentTermLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedScore, setSelectedScore] = useState<Score | null>(null);
 
@@ -140,6 +134,28 @@ export default function ScoresPage() {
     fetchTeacherData();
   }, [fetchTeacherData]);
 
+  const fetchCurrentTerm = useCallback(async () => {
+    setCurrentTermLoading(true);
+
+    const result = await call('/sessions/current-term');
+
+    if (result.success && result.data) {
+      const currentTerm = result.data as Term;
+      setTermId(currentTerm.id);
+      setAssessmentStage(currentTerm.assessment_stage);
+    } else {
+      setTermId('');
+      setAssessmentStage('classes');
+      showToast('error', result.error || 'Could not find current term');
+    }
+
+    setCurrentTermLoading(false);
+  }, [call, showToast]);
+
+  useEffect(() => {
+    fetchCurrentTerm();
+  }, [fetchCurrentTerm]);
+
   const availableSubjects = subjectAssignments.filter(
     (assignment) => assignment.class_id === selectedClass
   );
@@ -173,23 +189,14 @@ export default function ScoresPage() {
   const fetchScores = useCallback(async () => {
     if (!selectedClass || !selectedSubject) return;
 
-    const termResult = await call('/sessions/current-term');
-
-    if (!termResult.success || !termResult.data) {
-      showToast('error', 'Could not find current term');
+    if (!termId) {
       return;
     }
-
-    setTermId(termResult.data.id);
-
-    setAssessmentStage(
-      termResult.data.assessment_stage || 'classes'
-    );
 
     setLoading(true);
 
     const result = await call(
-      `/scores/class/${selectedClass}/${selectedSubject}/${termResult.data.id}`
+      `/scores/class/${selectedClass}/${selectedSubject}/${termId}`
     );
 
     if (result.success && Array.isArray(result.data)) {
@@ -203,11 +210,11 @@ export default function ScoresPage() {
     call,
     selectedClass,
     selectedSubject,
-    showToast,
+    termId,
   ]);
 
   useEffect(() => {
-    if (selectedClass && selectedSubject) {
+    if (selectedClass && selectedSubject && termId) {
       fetchScores();
     } else {
       setScores([]);
@@ -434,7 +441,7 @@ export default function ScoresPage() {
             </div>
 
             <div className="font-semibold text-primary-700">
-              {stageLabels[assessmentStage]}
+              {currentTermLoading ? 'Loading...' : stageLabels[assessmentStage]}
             </div>
           </div>
 
@@ -532,7 +539,7 @@ export default function ScoresPage() {
       <Modal
         open={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        title={`Edit Score · ${stageLabels[assessmentStage]}`}
+        title={`Edit Score Â· ${stageLabels[assessmentStage]}`}
         size="sm"
       >
         <div className="grid gap-4">
