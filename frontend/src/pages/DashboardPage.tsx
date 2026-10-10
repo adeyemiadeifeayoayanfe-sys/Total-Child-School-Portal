@@ -149,6 +149,15 @@ export default function DashboardPage() {
               happening today.
             </p>
           </div>
+          <div className="page-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => navigate('/attendance')}
+            >
+              Take Attendance
+            </button>
+          </div>
         </div>
 
         <div className="dashboard-grid">

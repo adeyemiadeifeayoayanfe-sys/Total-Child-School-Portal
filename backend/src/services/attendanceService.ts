@@ -20,10 +20,13 @@ interface TakeAttendanceInput {
 
 export async function takeAttendance(
   input: TakeAttendanceInput,
-  markedBy: string
+  markedBy: string,
+  requireTeacherAssignment: boolean = true
 ) {
-  const teacher = await getTeacherRecordForUser(markedBy);
-  await ensureTeacherAssignedToClass(teacher.id, input.class_id, input.session_id);
+  if (requireTeacherAssignment) {
+    const teacher = await getTeacherRecordForUser(markedBy);
+    await ensureTeacherAssignedToClass(teacher.id, input.class_id, input.session_id);
+  }
 
   const attendanceDate = input.attendance_date;
   const classId = input.class_id;

@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { supabaseAdmin } from '../config/supabase';
-import { authenticate, authorizeAdmin, authorizeTeacher } from '../middleware/auth';
+import { authenticate, authorize, authorizeAdmin, authorizeTeacher } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { AppError, NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { takeAttendanceSchema, updateAttendanceSchema } from '../validators/attendance';
@@ -13,9 +13,10 @@ const router = Router();
  * POST /api/attendance
  * Take attendance (Teacher)
  */
-router.post('/', authenticate, authorizeTeacher, validate(takeAttendanceSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', authenticate, authorize('teacher', 'admin', 'super_admin'), validate(takeAttendanceSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await takeAttendance(req.body, req.authUserId!);
+    const isAdministrativeUser = req.user?.roles?.some((role) => role === 'admin' || role === 'super_admin') || false;
+    const result = await takeAttendance(req.body, req.authUserId!, !isAdministrativeUser);
     res.status(201).json({
       success: true,
       data: result,

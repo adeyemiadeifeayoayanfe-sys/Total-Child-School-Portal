@@ -26,6 +26,7 @@ export default function AttendancePage() {
 
   const role = activeRole || user?.role;
   const isTeacher = role === 'teacher';
+  const canTakeAttendance = isTeacher || role === 'admin' || role === 'super_admin';
 
   const fetchClasses = useCallback(async () => {
     const endpoint = isTeacher ? '/teachers/my/classes' : '/classes';
@@ -235,7 +236,7 @@ export default function AttendancePage() {
         </div>
         <div className="page-actions">
           <DatePicker value={attendanceDate} onChange={setAttendanceDate} className="max-w-[180px]" />
-          {isTeacher && (
+          {canTakeAttendance && (
             <Button variant="primary" onClick={fetchStudentsForAttendance} disabled={!selectedClass}>
               Take Attendance
             </Button>
