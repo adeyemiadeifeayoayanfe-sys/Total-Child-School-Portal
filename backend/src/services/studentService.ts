@@ -61,13 +61,19 @@ export async function createStudent(input: CreateStudentInput, createdBy: string
       .eq('is_current', true)
       .single();
 
-    if (currentSession) {
-      await supabaseAdmin.from('enrollments').insert({
+    if (!currentSession) {
+      await supabaseAdmin.from('students').delete().eq('id', student.id);
+      throw new AppError('A current academic session is required to assign a new student to a class', 400);
+    }
+    const { error: enrollmentError } = await supabaseAdmin.from('enrollments').insert({
         student_id: student.id,
         class_id: input.class_id,
         session_id: currentSession.id,
         created_by: createdBy,
       });
+    if (enrollmentError) {
+      await supabaseAdmin.from('students').delete().eq('id', student.id);
+      throw new AppError('Failed to enroll the new student in the selected class', 500);
     }
   }
 

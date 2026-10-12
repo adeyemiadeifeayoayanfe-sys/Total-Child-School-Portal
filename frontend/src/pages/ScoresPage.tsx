@@ -69,6 +69,7 @@ export default function ScoresPage() {
     useState<AssessmentStage>('classes');
 
   const [termId, setTermId] = useState('');
+  const [currentSessionId, setCurrentSessionId] = useState('');
   const [currentTermLoading, setCurrentTermLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedScore, setSelectedScore] = useState<Score | null>(null);
@@ -106,19 +107,6 @@ export default function ScoresPage() {
       setClasses(assignedClasses);
       setSubjectAssignments(assignedSubjects);
 
-      if (assignedClasses.length === 1) {
-        setSelectedClass(assignedClasses[0].class_id);
-      } else if (
-        assignedClasses.length > 1 &&
-        !assignedClasses.some(
-          (item: TeacherClassAssignment) =>
-            item.class_id === selectedClass
-        )
-      ) {
-        setSelectedClass('');
-      } else if (assignedClasses.length === 0) {
-        setSelectedClass('');
-      }
     } catch (error) {
       console.error('Failed to load teacher assignments:', error);
       setClasses([]);
@@ -142,9 +130,11 @@ export default function ScoresPage() {
     if (result.success && result.data) {
       const currentTerm = result.data as Term;
       setTermId(currentTerm.id);
+      setCurrentSessionId(currentTerm.session_id);
       setAssessmentStage(currentTerm.assessment_stage);
     } else {
       setTermId('');
+      setCurrentSessionId('');
       setAssessmentStage('classes');
       showToast('error', result.error || 'Could not find current term');
     }
@@ -155,6 +145,19 @@ export default function ScoresPage() {
   useEffect(() => {
     fetchCurrentTerm();
   }, [fetchCurrentTerm]);
+
+  const eligibleClasses = classes.filter(
+    (assignment) => !currentSessionId || assignment.session_id === currentSessionId
+  );
+
+  useEffect(() => {
+    if (assignmentLoading || currentTermLoading) return;
+    if (eligibleClasses.length === 1) {
+      setSelectedClass(eligibleClasses[0].class_id);
+    } else if (!eligibleClasses.some((assignment) => assignment.class_id === selectedClass)) {
+      setSelectedClass(eligibleClasses[0]?.class_id || '');
+    }
+  }, [assignmentLoading, currentTermLoading, eligibleClasses, selectedClass]);
 
   const availableSubjects = subjectAssignments.filter(
     (assignment) => assignment.class_id === selectedClass
@@ -418,7 +421,7 @@ export default function ScoresPage() {
       assessmentStage === 'examination',
   };
 
-  const selectedClassAssignment = classes.find(
+  const selectedClassAssignment = eligibleClasses.find(
     (item) => item.class_id === selectedClass
   );
 
@@ -449,7 +452,7 @@ export default function ScoresPage() {
             <div className="py-4 text-sm text-gray-500">
               Loading your assignments...
             </div>
-          ) : classes.length === 0 ? (
+          ) : eligibleClasses.length === 0 ? (
             <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
               You have not been assigned to any class for score
               entry.
@@ -461,7 +464,7 @@ export default function ScoresPage() {
                   Class
                 </label>
 
-                {classes.length === 1 ? (
+                {eligibleClasses.length === 1 ? (
                   <div className="form-input bg-gray-50">
                     {selectedClassAssignment?.class?.name ||
                       'Assigned class'}
@@ -476,7 +479,7 @@ export default function ScoresPage() {
                       Select assigned class...
                     </option>
 
-                    {classes.map((item) => (
+                    {eligibleClasses.map((item) => (
                       <option
                         key={`${item.class_id}-${item.session_id}`}
                         value={item.class_id}

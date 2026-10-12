@@ -99,6 +99,9 @@ router.get('/my/classes', authenticate, authorizeTeacher, async (req: Request, r
     const { data: classAssignments } = await supabaseAdmin
       .from('teacher_class_assignments')
       .select(`
+        id,
+        class_id,
+        session_id,
         class:classes(*),
         session:academic_sessions(*)
       `)

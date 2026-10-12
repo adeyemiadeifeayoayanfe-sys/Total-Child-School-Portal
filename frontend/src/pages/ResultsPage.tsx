@@ -216,8 +216,15 @@ export default function ResultsPage() {
     setShowResultDetail(true);
   };
   const printReportCard = (result: Result) => {
+    if (result.status !== 'published') {
+      showToast('error', 'Only published results can be printed');
+      return;
+    }
     const student = result.student;
     const scores = result.scores || [];
+    const assessment = Array.isArray((result as any).personal_assessment)
+      ? (result as any).personal_assessment[0]
+      : (result as any).personal_assessment;
     const termName = result.term?.name
       ? `${result.term.name.charAt(0).toUpperCase()}${result.term.name.slice(1)} Term`
       : 'Term';
@@ -354,6 +361,10 @@ export default function ResultsPage() {
             border: 1px solid #9ca3af;
             margin-bottom: 18px;
           }
+          .comments { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+          .comment { border: 1px solid #9ca3af; padding: 8px; min-height: 62px; }
+          .comment h3 { margin: 0 0 5px; font-size: 9px; text-transform: uppercase; color: #4b5563; }
+          tr { break-inside: avoid; }
           .summary-item {
             padding: 9px 5px;
             text-align: center;
@@ -489,6 +500,10 @@ export default function ResultsPage() {
                 ${esc(result.cumulative_average ?? '-')}%
               </span>
             </div>
+          </div>
+          <div class="comments">
+            <div class="comment"><h3>Class Teacher's Comment</h3>${esc(assessment?.teacher_comment || 'Not provided')}</div>
+            <div class="comment"><h3>Head Teacher / Principal's Comment</h3>${esc(assessment?.head_teacher_comment || 'Not provided')}</div>
           </div>
           <div class="signatures">
             <div class="signature">Class Teacher</div>
@@ -865,12 +880,7 @@ export default function ResultsPage() {
         {selectedResult && (
           <>
             <div className="flex justify-end gap-2 mb-4">
-              <Button
-                variant="outline"
-                onClick={() => printReportCard(selectedResult)}
-              >
-                Print Report Card
-              </Button>
+              {selectedResult.status === 'published' && <Button variant="outline" onClick={() => printReportCard(selectedResult)}>Print Report Card</Button>}
             </div>
             <div className="grid gap-4">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

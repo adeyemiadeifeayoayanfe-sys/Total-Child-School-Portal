@@ -93,6 +93,18 @@ export default function BroadsheetsPage() {
     setSubmitting(false);
   };
 
+  const printBroadsheet = async (broadsheet: BroadsheetSubmission) => {
+    const result = await call(`/broadsheets/${broadsheet.id}/print`);
+    if (!result.success || !result.data) { showToast('error', result.error || 'Failed to prepare broadsheet'); return; }
+    const data: any = result.data;
+    const esc = (value: unknown) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const rows = (data.students || []).map((item: any, index: number) => `<tr><td>${index + 1}</td><td>${esc(`${item.student?.last_name || ''} ${item.student?.first_name || ''}`.trim())}</td><td>${esc(item.student?.admission_number || '-')}</td><td>${item.score ? esc(item.score.test1) : '-'}</td><td>${item.score ? esc(item.score.test2) : '-'}</td><td>${item.score ? esc(item.score.test3) : '-'}</td><td>${item.score ? esc(item.score.examination) : '-'}</td><td>${item.score ? `<strong>${esc(item.score.total)}</strong>` : '-'}</td></tr>`).join('');
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) { showToast('error', 'Please allow pop-ups to print the broadsheet'); return; }
+    printWindow.document.write(`<!doctype html><html><head><title>Broadsheet</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111827;font-size:10px}.header{text-align:center;border-bottom:2px solid #1d4ed8;margin-bottom:10px;padding-bottom:8px}h1{margin:0;color:#1d4ed8;font-size:20px}.context{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:10px 0}.context div{border:1px solid #cbd5e1;padding:5px}.label{font-size:8px;color:#64748b;text-transform:uppercase}table{width:100%;border-collapse:collapse}thead{display:table-header-group}th,td{border:1px solid #94a3b8;padding:5px;text-align:center}th{background:#dbeafe;font-weight:700}td:nth-child(2){text-align:left}tr{break-inside:avoid}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="header"><h1>CEM Total Child School</h1><strong>CLASS BROADSHEET</strong></div><div class="context"><div><span class="label">Class</span><br>${esc(data.class?.name)}</div><div><span class="label">Subject</span><br>${esc(data.subject?.name)}</div><div><span class="label">Session / Term</span><br>${esc(data.session?.name)} / ${esc(data.term?.name)}</div><div><span class="label">Assessment Stage</span><br>${esc(data.term?.assessment_stage || '-')}</div></div><table><thead><tr><th>#</th><th>Student</th><th>Admission No.</th><th>Test 1 /20</th><th>Test 2 /20</th><th>Test 3 /20</th><th>Exam /40</th><th>Total /100</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
+    printWindow.document.close(); printWindow.focus(); setTimeout(() => printWindow.print(), 300);
+  };
+
   const columns = [
     {
       key: 'class',
@@ -122,6 +134,7 @@ export default function BroadsheetsPage() {
       header: 'Actions',
       render: (broadsheet: BroadsheetSubmission) => (
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => printBroadsheet(broadsheet)}>Print</Button>
           {isTeacher && (broadsheet.status === 'draft' || broadsheet.status === 'returned') && (
             <Button
               variant="primary"

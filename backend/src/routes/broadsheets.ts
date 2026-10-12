@@ -4,7 +4,7 @@ import { authenticate, authorizeAdmin, authorizeTeacher } from '../middleware/au
 import { validate } from '../middleware/validation';
 import { AppError, NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { submitBroadsheetSchema, returnBroadsheetSchema, approveBroadsheetSchema } from '../validators/broadsheet';
-import { submitBroadsheet, returnBroadsheet, approveBroadsheet, getBroadsheets, getBroadsheetById, checkAllBroadsheetsSubmitted } from '../services/broadsheetService';
+import { submitBroadsheet, returnBroadsheet, approveBroadsheet, getBroadsheets, getBroadsheetById, getPrintableBroadsheet, checkAllBroadsheetsSubmitted } from '../services/broadsheetService';
 import { getTeacherRecordForUser } from '../services/accessService';
 
 const router = Router();
@@ -72,6 +72,15 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
   } catch (error) {
     next(error);
   }
+});
+
+router.get('/:id/print', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const teacher = req.user?.role === 'teacher' ? await getTeacherRecordForUser(req.authUserId!) : undefined;
+    if (!teacher && req.user?.role !== 'admin' && req.user?.role !== 'super_admin') throw new ForbiddenError('You do not have permission to print this broadsheet');
+    const data = await getPrintableBroadsheet(req.params.id, teacher?.id);
+    res.json({ success: true, data });
+  } catch (error) { next(error); }
 });
 
 /**

@@ -607,7 +607,7 @@ export async function getResultById(resultId: string) {
       class:classes(*),
       session:academic_sessions(*),
       term:terms(*),
-      result_subjects(
+      scores:result_subjects(
         *,
         subject:subjects(*)
       ),

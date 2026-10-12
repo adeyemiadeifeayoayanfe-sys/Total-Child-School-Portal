@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/ui/Toast';
-import { AcademicSession, Student } from '../types';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
@@ -31,12 +30,8 @@ export default function ClassDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddStudent, setShowAddStudent] = useState(false);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [sessions, setSessions] = useState<AcademicSession[]>([]);
-  const [sessionId, setSessionId] = useState('');
-  const [selectedStudentId, setSelectedStudentId] = useState('');
-  const [loadingStudents, setLoadingStudents] = useState(false);
   const [assigningStudent, setAssigningStudent] = useState(false);
+  const [studentForm, setStudentForm] = useState({ admission_number: '', first_name: '', last_name: '', middle_name: '', date_of_birth: '', gender: 'male', phone: '', address: '', email: '' });
 
   const loadDetails = useCallback(async () => {
     if (!id) return;
@@ -51,45 +46,27 @@ export default function ClassDetailsPage() {
 
   useEffect(() => { loadDetails(); }, [loadDetails]);
 
-  const openAddStudent = async () => {
+  const openAddStudent = () => {
     setShowAddStudent(true);
-    setLoadingStudents(true);
-    const [studentsResult, sessionsResult] = await Promise.all([
-      call('/students?status=active&limit=100'),
-      call('/sessions'),
-    ]);
-    if (studentsResult.success && Array.isArray(studentsResult.data)) {
-      setStudents(studentsResult.data as Student[]);
-    } else {
-      showToast('error', studentsResult.error || 'Failed to load students');
-    }
-    if (sessionsResult.success && Array.isArray(sessionsResult.data)) {
-      const sessions = sessionsResult.data as AcademicSession[];
-      setSessions(sessions);
-      setSessionId(sessions.find((session) => session.is_current)?.id || sessions[0]?.id || '');
-    } else {
-      showToast('error', sessionsResult.error || 'Failed to load academic sessions');
-    }
-    setLoadingStudents(false);
+    setStudentForm({ admission_number: '', first_name: '', last_name: '', middle_name: '', date_of_birth: '', gender: 'male', phone: '', address: '', email: '' });
   };
 
-  const assignStudent = async () => {
-    if (!id || !selectedStudentId || !sessionId) {
-      showToast('error', 'Select a student and academic session');
+  const createStudent = async () => {
+    if (!id || !studentForm.admission_number.trim() || !studentForm.first_name.trim() || !studentForm.last_name.trim()) {
+      showToast('error', 'Admission number, first name, and last name are required');
       return;
     }
     setAssigningStudent(true);
-    const result = await call('/students/assign-class', {
+    const result = await call('/students', {
       method: 'POST',
-      body: { student_id: selectedStudentId, class_id: id, session_id: sessionId },
+      body: { ...studentForm, admission_number: studentForm.admission_number.trim(), first_name: studentForm.first_name.trim(), last_name: studentForm.last_name.trim(), middle_name: studentForm.middle_name.trim() || null, date_of_birth: studentForm.date_of_birth || null, phone: studentForm.phone.trim() || null, address: studentForm.address.trim() || null, email: studentForm.email.trim() || null, class_id: id },
     });
     if (result.success) {
-      showToast('success', 'Student assigned to this class');
+      showToast('success', 'Student created and added to this class');
       setShowAddStudent(false);
-      setSelectedStudentId('');
       await loadDetails();
     } else {
-      showToast('error', result.error || 'Failed to assign student');
+      showToast('error', result.error || 'Failed to create student');
     }
     setAssigningStudent(false);
   };
@@ -102,8 +79,8 @@ export default function ClassDetailsPage() {
     {details.description && <Card title="Description" className="mt-6" hover={false}><p>{details.description}</p></Card>}
     <Card title="Student Roster" action={<Button size="sm" onClick={openAddStudent}>Add Student to {details.name}</Button>} className="mt-6" hover={false}><Table data={activeEnrollments} emptyMessage="No students are currently enrolled in this class." columns={[{ key: 'student', header: 'Student', render: (row: any) => `${row.student?.last_name || ''} ${row.student?.first_name || ''}`.trim() || 'Unknown student' }, { key: 'admission', header: 'Admission Number', render: (row: any) => row.student?.admission_number || '-' }]} /></Card>
     <div className="grid gap-6 lg:grid-cols-2 mt-6"><Card title="Assigned Teachers" hover={false}>{details.teacher_class_assignments?.length ? <div className="grid gap-2">{details.teacher_class_assignments.map((assignment) => <div className="rounded border p-3" key={assignment.id}>{`${assignment.teacher?.profile?.first_name || ''} ${assignment.teacher?.profile?.last_name || ''}`.trim() || 'Assigned teacher'}{assignment.is_class_teacher && <div className="text-sm text-gray-500">Class Teacher</div>}</div>)}</div> : <p className="text-sm text-gray-500">No teachers assigned.</p>}</Card><Card title="Assigned Subjects" hover={false}>{details.class_subject_assignments?.length ? <div className="grid gap-2">{details.class_subject_assignments.map((assignment) => <div className="rounded border p-3" key={assignment.id}>{assignment.subject?.name || 'Unnamed subject'}{assignment.session?.name && <div className="text-sm text-gray-500">{assignment.session.name}</div>}</div>)}</div> : <p className="text-sm text-gray-500">No subjects assigned.</p>}</Card></div>
-    <Modal open={showAddStudent} onClose={() => !assigningStudent && setShowAddStudent(false)} title={`Add Student to ${details.name}`} footer={<><Button variant="secondary" onClick={() => setShowAddStudent(false)} disabled={assigningStudent}>Cancel</Button><Button onClick={assignStudent} loading={assigningStudent} disabled={loadingStudents || !selectedStudentId || !sessionId}>Add to This Class</Button></>}>
-      {loadingStudents ? <div className="py-8 text-center">Loading students...</div> : <div className="grid gap-4"><p className="text-sm text-gray-600">The selected student will be assigned directly to <strong>{details.name}</strong>.</p><label><span className="form-label">Academic Session</span><select className="form-input" value={sessionId} onChange={(event) => setSessionId(event.target.value)}><option value="">Select session</option>{sessions.map((session) => <option key={session.id} value={session.id}>{session.name}</option>)}</select></label><label><span className="form-label">Student</span><select className="form-input" value={selectedStudentId} onChange={(event) => setSelectedStudentId(event.target.value)}><option value="">Select existing student</option>{students.filter((student) => !activeEnrollments.some((enrollment) => enrollment.student?.id === student.id)).map((student) => <option key={student.id} value={student.id}>{student.last_name} {student.first_name} ({student.admission_number})</option>)}</select></label></div>}
+    <Modal open={showAddStudent} onClose={() => !assigningStudent && setShowAddStudent(false)} title={`Add New Student to ${details.name}`} footer={<><Button variant="secondary" onClick={() => setShowAddStudent(false)} disabled={assigningStudent}>Cancel</Button><Button onClick={createStudent} loading={assigningStudent}>Create and Add</Button></>}>
+      <div className="grid gap-4"><p className="text-sm text-gray-600">This student will be registered directly in <strong>{details.name}</strong>; the class cannot be changed here.</p><label><span className="form-label">Admission Number</span><input className="form-input" value={studentForm.admission_number} onChange={(event) => setStudentForm({ ...studentForm, admission_number: event.target.value })} /></label><div className="grid grid-cols-2 gap-4"><label><span className="form-label">First Name</span><input className="form-input" value={studentForm.first_name} onChange={(event) => setStudentForm({ ...studentForm, first_name: event.target.value })} /></label><label><span className="form-label">Last Name</span><input className="form-input" value={studentForm.last_name} onChange={(event) => setStudentForm({ ...studentForm, last_name: event.target.value })} /></label></div><div className="grid grid-cols-2 gap-4"><label><span className="form-label">Middle Name</span><input className="form-input" value={studentForm.middle_name} onChange={(event) => setStudentForm({ ...studentForm, middle_name: event.target.value })} /></label><label><span className="form-label">Date of Birth (Optional)</span><input type="date" className="form-input" value={studentForm.date_of_birth} onChange={(event) => setStudentForm({ ...studentForm, date_of_birth: event.target.value })} /></label></div><label><span className="form-label">Gender</span><select className="form-select" value={studentForm.gender} onChange={(event) => setStudentForm({ ...studentForm, gender: event.target.value })}><option value="male">Male</option><option value="female">Female</option></select></label></div>
     </Modal>
   </div>;
 }

@@ -327,10 +327,6 @@ export async function getBroadsheetById(broadsheetId: string, teacherId?: string
       teacher:teachers(
         *,
         profile:profiles(first_name, last_name)
-      ),
-      scores(
-        *,
-        student:students(id, admission_number, first_name, last_name)
       )
     `)
     .eq('id', broadsheetId);
@@ -346,6 +342,30 @@ export async function getBroadsheetById(broadsheetId: string, teacherId?: string
   }
 
   return broadsheet;
+}
+
+export async function getPrintableBroadsheet(broadsheetId: string, teacherId?: string) {
+  const broadsheet = await getBroadsheetById(broadsheetId, teacherId);
+  const { data: enrollments, error: enrollmentError } = await supabaseAdmin
+    .from('enrollments')
+    .select('student:students(id, admission_number, first_name, last_name)')
+    .eq('class_id', broadsheet.class_id)
+    .eq('session_id', broadsheet.session_id)
+    .is('unenrolled_at', null);
+  const { data: scores, error: scoreError } = await supabaseAdmin
+    .from('scores')
+    .select('*')
+    .eq('class_id', broadsheet.class_id)
+    .eq('subject_id', broadsheet.subject_id)
+    .eq('session_id', broadsheet.session_id)
+    .eq('term_id', broadsheet.term_id);
+  if (enrollmentError || scoreError) throw new AppError('Failed to prepare broadsheet for printing', 500);
+  const scoreMap = new Map((scores || []).map((score: any) => [score.student_id, score]));
+  return {
+    ...broadsheet,
+    students: (enrollments || []).map((item: any) => ({ student: item.student, score: scoreMap.get(item.student?.id) || null }))
+      .sort((left: any, right: any) => `${left.student?.last_name || ''} ${left.student?.first_name || ''}`.localeCompare(`${right.student?.last_name || ''} ${right.student?.first_name || ''}`)),
+  };
 }
 
 export async function checkAllBroadsheetsApproved(
