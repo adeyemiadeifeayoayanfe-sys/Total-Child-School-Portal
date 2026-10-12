@@ -193,22 +193,63 @@ export async function getClassScores(
   subjectId: string,
   termId: string
 ) {
-  const { data: scores, error } = await supabaseAdmin
-    .from('scores')
-    .select(`
-      *,
-      student:students(id, admission_number, first_name, last_name)
-    `)
-    .eq('class_id', classId)
-    .eq('subject_id', subjectId)
-    .eq('term_id', termId)
-    .order('created_at', { ascending: true });
+  const { data: term, error: termError } = await supabaseAdmin
+    .from('terms')
+    .select('session_id')
+    .eq('id', termId)
+    .single();
 
-  if (error) {
-    throw new AppError('Failed to fetch class scores', 500);
+  if (termError || !term) {
+    throw new NotFoundError('Term not found');
   }
 
-  return (scores || []).sort((left, right) => {
+  const [{ data: enrollments, error: enrollmentError }, { data: scores, error: scoreError }] =
+    await Promise.all([
+      supabaseAdmin
+        .from('enrollments')
+        .select('student:students(id, admission_number, first_name, last_name)')
+        .eq('class_id', classId)
+        .eq('session_id', term.session_id)
+        .is('unenrolled_at', null),
+      supabaseAdmin
+        .from('scores')
+        .select(`
+          *,
+          student:students(id, admission_number, first_name, last_name)
+        `)
+        .eq('class_id', classId)
+        .eq('subject_id', subjectId)
+        .eq('term_id', termId),
+    ]);
+
+  if (enrollmentError || scoreError) {
+    throw new AppError('Failed to fetch class score entry data', 500);
+  }
+
+  const scoresByStudent = new Map((scores || []).map((score: any) => [score.student_id, score]));
+  const rows = (enrollments || []).map((enrollment: any) => {
+    const student = enrollment.student;
+    const savedScore = scoresByStudent.get(student.id);
+
+    return savedScore || {
+      id: '',
+      student_id: student.id,
+      class_id: classId,
+      subject_id: subjectId,
+      session_id: term.session_id,
+      term_id: termId,
+      test1: null,
+      test2: null,
+      test3: null,
+      examination: null,
+      total: 0,
+      percentage: 0,
+      student,
+      is_new: true,
+    };
+  });
+
+  return rows.sort((left: any, right: any) => {
     const leftLast = left.student?.last_name || '';
     const rightLast = right.student?.last_name || '';
     return leftLast.localeCompare(rightLast);

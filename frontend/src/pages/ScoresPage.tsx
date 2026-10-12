@@ -49,6 +49,10 @@ interface TeacherSubjectAssignment {
   };
 }
 
+type ScoreEntryRow = Score & {
+  is_new?: boolean;
+};
+
 export default function ScoresPage() {
   const { call } = useApi();
   const { showToast } = useToast();
@@ -61,7 +65,7 @@ export default function ScoresPage() {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
 
-  const [scores, setScores] = useState<Score[]>([]);
+  const [scores, setScores] = useState<ScoreEntryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [assignmentLoading, setAssignmentLoading] = useState(true);
 
@@ -72,7 +76,7 @@ export default function ScoresPage() {
   const [currentSessionId, setCurrentSessionId] = useState('');
   const [currentTermLoading, setCurrentTermLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedScore, setSelectedScore] = useState<Score | null>(null);
+  const [selectedScore, setSelectedScore] = useState<ScoreEntryRow | null>(null);
 
   const [scoreForm, setScoreForm] = useState({
     test1: '',
@@ -160,7 +164,9 @@ export default function ScoresPage() {
   }, [assignmentLoading, currentTermLoading, eligibleClasses, selectedClass]);
 
   const availableSubjects = subjectAssignments.filter(
-    (assignment) => assignment.class_id === selectedClass
+    (assignment) =>
+      assignment.class_id === selectedClass &&
+      (!currentSessionId || assignment.session_id === currentSessionId)
   );
 
   useEffect(() => {
@@ -236,7 +242,7 @@ export default function ScoresPage() {
     setScores([]);
   };
 
-  const openEditModal = (score: Score) => {
+  const openEditModal = (score: ScoreEntryRow) => {
     if (assessmentStage === 'classes') {
       showToast(
         'error',
@@ -258,7 +264,7 @@ export default function ScoresPage() {
   };
 
   const handleSaveScore = async () => {
-    if (!selectedScore || !termId) return;
+    if (!selectedScore || !termId || !selectedClass || !selectedSubject) return;
 
     setSaving(true);
 
@@ -300,13 +306,22 @@ export default function ScoresPage() {
       }
     }
 
-    const result = await call(
-      `/scores/${selectedScore.id}`,
-      {
-        method: 'PUT',
-        body,
-      }
-    );
+    const result = !selectedScore.is_new
+      ? await call(`/scores/${selectedScore.id}`, {
+          method: 'PUT',
+          body,
+        })
+      : await call('/scores', {
+          method: 'POST',
+          body: {
+            ...body,
+            student_id: selectedScore.student_id,
+            class_id: selectedClass,
+            subject_id: selectedSubject,
+            session_id: currentSessionId,
+            term_id: termId,
+          },
+        });
 
     if (result.success) {
       showToast('success', 'Score updated successfully');
@@ -324,11 +339,26 @@ export default function ScoresPage() {
 
   const canEdit = assessmentStage !== 'classes';
 
+  const goToNextSubject = () => {
+    const currentIndex = availableSubjects.findIndex(
+      (assignment) => assignment.subject_id === selectedSubject
+    );
+    const nextSubject = availableSubjects[currentIndex + 1];
+
+    if (!nextSubject) {
+      showToast('success', 'You have reached the last assigned subject');
+      return;
+    }
+
+    setSelectedSubject(nextSubject.subject_id);
+    setScores([]);
+  };
+
   const columns = [
     {
       key: 'student',
       header: 'Student',
-      render: (score: Score) => (
+      render: (score: ScoreEntryRow) => (
         <div>
           <div className="font-semibold">
             {score.student?.first_name}{' '}
@@ -343,7 +373,7 @@ export default function ScoresPage() {
     {
       key: 'test1',
       header: 'Test 1 (20)',
-      render: (score: Score) => (
+      render: (score: ScoreEntryRow) => (
         <span className="font-medium">
           {score.test1 ?? '-'}
         </span>
@@ -352,7 +382,7 @@ export default function ScoresPage() {
     {
       key: 'test2',
       header: 'Test 2 (20)',
-      render: (score: Score) => (
+      render: (score: ScoreEntryRow) => (
         <span className="font-medium">
           {score.test2 ?? '-'}
         </span>
@@ -361,7 +391,7 @@ export default function ScoresPage() {
     {
       key: 'test3',
       header: 'Test 3 (20)',
-      render: (score: Score) => (
+      render: (score: ScoreEntryRow) => (
         <span className="font-medium">
           {score.test3 ?? '-'}
         </span>
@@ -370,7 +400,7 @@ export default function ScoresPage() {
     {
       key: 'examination',
       header: 'Exam (40)',
-      render: (score: Score) => (
+      render: (score: ScoreEntryRow) => (
         <span className="font-medium">
           {score.examination ?? '-'}
         </span>
@@ -379,7 +409,7 @@ export default function ScoresPage() {
     {
       key: 'total',
       header: 'Total (100)',
-      render: (score: Score) => (
+      render: (score: ScoreEntryRow) => (
         <span className="font-bold text-primary-600">
           {score.total}
         </span>
@@ -388,14 +418,14 @@ export default function ScoresPage() {
     {
       key: 'actions',
       header: 'Actions',
-      render: (score: Score) => (
+      render: (score: ScoreEntryRow) => (
         <Button
           variant="outline"
           size="sm"
           onClick={() => openEditModal(score)}
           disabled={!canEdit}
         >
-          {canEdit ? 'Edit Score' : 'Locked'}
+          {canEdit ? (score.id ? 'Edit Score' : 'Enter Score') : 'Locked'}
         </Button>
       ),
     },
@@ -528,7 +558,20 @@ export default function ScoresPage() {
         </Card>
 
         {selectedClass && selectedSubject && (
-          <Card title="Student Scores">
+          <Card
+            title="Student Scores"
+            subtitle={availableSubjects.find((assignment) => assignment.subject_id === selectedSubject)?.subject?.name}
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextSubject}
+                disabled={availableSubjects.findIndex((assignment) => assignment.subject_id === selectedSubject) === availableSubjects.length - 1}
+              >
+                Next Subject
+              </Button>
+            }
+          >
             <Table
               columns={columns}
               data={scores}
