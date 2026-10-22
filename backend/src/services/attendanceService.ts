@@ -179,7 +179,7 @@ export async function getClassAttendance(
     .from('attendance')
     .select(`
       *,
-      student:students(id, admission_number, first_name, last_name)
+      student:students(id, admission_number, first_name, middle_name, last_name)
     `)
     .eq('class_id', classId)
     .eq('session_id', sessionId);

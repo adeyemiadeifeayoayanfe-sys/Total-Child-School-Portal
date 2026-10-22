@@ -348,7 +348,7 @@ export async function getPrintableBroadsheet(broadsheetId: string, teacherId?: s
   const broadsheet = await getBroadsheetById(broadsheetId, teacherId);
   const { data: enrollments, error: enrollmentError } = await supabaseAdmin
     .from('enrollments')
-    .select('student:students(id, admission_number, first_name, last_name)')
+    .select('student:students(id, admission_number, first_name, middle_name, last_name)')
     .eq('class_id', broadsheet.class_id)
     .eq('session_id', broadsheet.session_id)
     .is('unenrolled_at', null);
@@ -364,7 +364,7 @@ export async function getPrintableBroadsheet(broadsheetId: string, teacherId?: s
   return {
     ...broadsheet,
     students: (enrollments || []).map((item: any) => ({ student: item.student, score: scoreMap.get(item.student?.id) || null }))
-      .sort((left: any, right: any) => `${left.student?.last_name || ''} ${left.student?.first_name || ''}`.localeCompare(`${right.student?.last_name || ''} ${right.student?.first_name || ''}`)),
+      .sort((left: any, right: any) => `${left.student?.first_name || ''} ${left.student?.middle_name || ''} ${left.student?.last_name || ''}`.localeCompare(`${right.student?.first_name || ''} ${right.student?.middle_name || ''} ${right.student?.last_name || ''}`)),
   };
 }
 

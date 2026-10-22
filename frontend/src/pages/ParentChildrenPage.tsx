@@ -5,6 +5,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Table from '../components/ui/Table';
 import { StatusBadge } from '../components/ui/Badge';
+import { formatStudentName } from '../utils/studentName';
 type Child = {
   id: string;
   admission_number: string;
@@ -302,7 +303,7 @@ export default function ParentChildrenPage() {
           >
             {children.map((child) => (
               <option key={child.id} value={child.id}>
-                {child.first_name} {child.last_name}
+                {formatStudentName(child)}
               </option>
             ))}
           </select>
@@ -315,7 +316,7 @@ export default function ParentChildrenPage() {
               <div>
                 <p className="text-xs text-gray-500">Student</p>
                 <p className="font-semibold">
-                  {selectedChild.first_name} {selectedChild.last_name}
+                  {formatStudentName(selectedChild)}
                 </p>
               </div>
               <div>

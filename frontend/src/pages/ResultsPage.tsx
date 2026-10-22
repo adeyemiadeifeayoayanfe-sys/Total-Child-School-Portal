@@ -8,6 +8,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
+import { formatStudentName } from '../utils/studentName';
 export default function ResultsPage() {
   const { call } = useApi();
   const { showToast } = useToast();
@@ -267,7 +268,7 @@ export default function ResultsPage() {
       <html>
       <head>
         <title>
-          ${esc(student?.first_name)} ${esc(student?.last_name)} - Report Card
+          ${esc(formatStudentName(student))} - Report Card
         </title>
         <style>
           @page {
@@ -425,7 +426,7 @@ export default function ResultsPage() {
             <div class="info-item">
               <span class="info-label">Student Name</span>
               <span class="info-value">
-                ${esc(`${student?.first_name || ''} ${student?.last_name || ''}`.trim())}
+                ${esc(formatStudentName(student))}
               </span>
             </div>
             <div class="info-item">
@@ -528,7 +529,7 @@ export default function ResultsPage() {
       key: 'student',
       header: 'Student',
       render: (result: Result) =>
-        `${result.student?.first_name || ''} ${result.student?.last_name || ''}`,
+        formatStudentName(result.student),
     },
     {
       key: 'class',
@@ -694,7 +695,7 @@ export default function ResultsPage() {
               <option value="">Select student...</option>
               {students.map((student) => (
                 <option key={student.id} value={student.id}>
-                  {student.first_name} {student.last_name} (
+                  {formatStudentName(student)} (
                   {student.admission_number})
                 </option>
               ))}
@@ -887,8 +888,7 @@ export default function ResultsPage() {
                 <div>
                   <p className="text-sm text-gray-500">Student</p>
                   <p className="font-semibold">
-                    {selectedResult.student?.first_name}{' '}
-                    {selectedResult.student?.last_name}
+                    {formatStudentName(selectedResult.student)}
                   </p>
                 </div>
                 <div>

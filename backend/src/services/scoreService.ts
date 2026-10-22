@@ -207,7 +207,7 @@ export async function getClassScores(
     await Promise.all([
       supabaseAdmin
         .from('enrollments')
-        .select('student:students(id, admission_number, first_name, last_name)')
+        .select('student:students(id, admission_number, first_name, middle_name, last_name)')
         .eq('class_id', classId)
         .eq('session_id', term.session_id)
         .is('unenrolled_at', null),
@@ -215,7 +215,7 @@ export async function getClassScores(
         .from('scores')
         .select(`
           *,
-          student:students(id, admission_number, first_name, last_name)
+          student:students(id, admission_number, first_name, middle_name, last_name)
         `)
         .eq('class_id', classId)
         .eq('subject_id', subjectId)
@@ -250,9 +250,9 @@ export async function getClassScores(
   });
 
   return rows.sort((left: any, right: any) => {
-    const leftLast = left.student?.last_name || '';
-    const rightLast = right.student?.last_name || '';
-    return leftLast.localeCompare(rightLast);
+    const leftName = `${left.student?.first_name || ''} ${left.student?.middle_name || ''} ${left.student?.last_name || ''}`;
+    const rightName = `${right.student?.first_name || ''} ${right.student?.middle_name || ''} ${right.student?.last_name || ''}`;
+    return leftName.localeCompare(rightName);
   });
 }
 

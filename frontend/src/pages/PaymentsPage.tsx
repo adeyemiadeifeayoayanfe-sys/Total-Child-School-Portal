@@ -9,6 +9,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
+import { formatStudentName } from '../utils/studentName';
 
 export default function PaymentsPage() {
   const { call } = useApi();
@@ -123,7 +124,7 @@ export default function PaymentsPage() {
       key: 'student',
       header: 'Student',
       render: (payment: Payment) =>
-        payment.student ? `${payment.student.first_name} ${payment.student.last_name}` : '-',
+        payment.student ? formatStudentName(payment.student) : '-',
     },
     {
       key: 'purpose',
@@ -199,7 +200,7 @@ export default function PaymentsPage() {
               <option value="">Select student...</option>
               {(Array.isArray(students) ? students : []).map((student) => (
                 <option key={student.id} value={student.id}>
-                  {student.first_name} {student.last_name} ({student.admission_number})
+                  {formatStudentName(student)} ({student.admission_number})
                 </option>
               ))}
             </select>

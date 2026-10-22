@@ -9,6 +9,7 @@ import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
 import '../styles/receipt.css';
+import { formatStudentName } from '../utils/studentName';
 export default function ReceiptsPage() {
   const { call } = useApi();
   const { showToast } = useToast();
@@ -68,7 +69,7 @@ export default function ReceiptsPage() {
   };
   const getStudentName = (receipt: Receipt) => {
     if (!receipt.student) return '-';
-    return `${receipt.student.first_name} ${receipt.student.last_name}`;
+    return formatStudentName(receipt.student);
   };
   const createReceiptMarkup = (receipt: Receipt) => {
     const studentName = getStudentName(receipt);

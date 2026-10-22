@@ -54,7 +54,7 @@ router.get(
 
       if (search) {
         query = query.or(
-          `first_name.ilike.%${search}%,last_name.ilike.%${search}%,admission_number.ilike.%${search}%`
+          `first_name.ilike.%${search}%,middle_name.ilike.%${search}%,last_name.ilike.%${search}%,admission_number.ilike.%${search}%`
         );
       }
 

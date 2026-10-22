@@ -9,6 +9,7 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
 import { LoadingContainer } from '../components/ui/Spinner';
+import { formatStudentName } from '../utils/studentName';
 
 export default function AttendancePage() {
   const { call } = useApi();
@@ -137,7 +138,7 @@ export default function AttendancePage() {
       header: 'Student',
       render: (record: Attendance) => {
         const student = record.student;
-        return `${student?.first_name || ''} ${student?.last_name || ''}`;
+        return formatStudentName(student);
       },
     },
     {
@@ -195,7 +196,7 @@ export default function AttendancePage() {
                 {students.map((student: any) => (
                   <tr key={student.id}>
                     <td>
-                      <div className="font-medium">{student.first_name} {student.last_name}</div>
+                      <div className="font-medium">{formatStudentName(student)}</div>
                       <div className="text-xs text-gray-400">{student.admission_number}</div>
                     </td>
                     <td>

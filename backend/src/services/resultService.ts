@@ -634,7 +634,7 @@ export async function getResults(filters?: {
     .from('results')
     .select(`
       *,
-      student:students(id, admission_number, first_name, last_name),
+      student:students(id, admission_number, first_name, middle_name, last_name),
       class:classes(name),
       session:academic_sessions(name),
       term:terms(name)

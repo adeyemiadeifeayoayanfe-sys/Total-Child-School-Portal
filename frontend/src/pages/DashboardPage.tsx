@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { LoadingContainer } from '../components/ui/Spinner';
 import Card from '../components/ui/Card';
+import { formatStudentName } from '../utils/studentName';
 
 export default function DashboardPage() {
   const { user, activeRole } = useAuth();
@@ -547,9 +548,7 @@ export default function DashboardPage() {
             {data.children.map((child: any, index: number) => (
               <Card
                 key={index}
-                title={`${child?.student?.first_name || ''} ${
-                  child?.student?.last_name || ''
-                }`.trim() || 'Student'}
+                title={formatStudentName(child?.student) || 'Student'}
               >
                 <div
                   style={{

@@ -372,7 +372,7 @@ export default function App() {
           <Route
             path="/score-review"
             element={
-              <ProtectedRoute allowedRoles={['super_admin']}>
+              <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
                 <ScoreReviewPage />
               </ProtectedRoute>
             }

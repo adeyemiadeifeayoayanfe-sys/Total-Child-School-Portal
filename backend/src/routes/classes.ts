@@ -70,17 +70,28 @@ router.get('/:id', authenticate, authorizeAdmin, async (req: Request, res: Respo
       .select('*')
       .eq('class_id', req.params.id);
 
+    const { data: subjectTeacherAssignments, error: subjectTeacherError } = await supabaseAdmin
+      .from('teacher_subject_assignments')
+      .select('*')
+      .eq('class_id', req.params.id)
+      .is('unassigned_at', null);
+
     if (enrollmentError) throw new AppError(`Failed to load class enrollments: ${enrollmentError.message}`, 500);
     if (teacherError) throw new AppError(`Failed to load teacher assignments: ${teacherError.message}`, 500);
     if (subjectError) throw new AppError(`Failed to load subject assignments: ${subjectError.message}`, 500);
+    if (subjectTeacherError) throw new AppError(`Failed to load subject teacher assignments: ${subjectTeacherError.message}`, 500);
 
     const studentIds = [...new Set((enrollments || []).map((item: any) => item.student_id).filter(Boolean))];
     const sessionIds = [...new Set([
       ...(enrollments || []).map((item: any) => item.session_id),
       ...(teacherAssignments || []).map((item: any) => item.session_id),
+      ...(subjectTeacherAssignments || []).map((item: any) => item.session_id),
       ...(subjectAssignments || []).map((item: any) => item.session_id),
     ].filter(Boolean))];
-    const teacherIds = [...new Set((teacherAssignments || []).map((item: any) => item.teacher_id).filter(Boolean))];
+    const teacherIds = [...new Set([
+      ...(teacherAssignments || []).map((item: any) => item.teacher_id),
+      ...(subjectTeacherAssignments || []).map((item: any) => item.teacher_id),
+    ].filter(Boolean))];
     const subjectIds = [...new Set((subjectAssignments || []).map((item: any) => item.subject_id).filter(Boolean))];
 
     const [
@@ -133,6 +144,12 @@ router.get('/:id', authenticate, authorizeAdmin, async (req: Request, res: Respo
       subject: subjectMap.get(item.subject_id) || null,
       session: sessionMap.get(item.session_id) || null,
     }));
+    const enrichedSubjectTeacherAssignments = (subjectTeacherAssignments || []).map((item: any) => ({
+      ...item,
+      teacher: teacherMap.get(item.teacher_id) || null,
+      subject: subjectMap.get(item.subject_id) || null,
+      session: sessionMap.get(item.session_id) || null,
+    }));
 
     res.json({
       success: true,
@@ -140,6 +157,7 @@ router.get('/:id', authenticate, authorizeAdmin, async (req: Request, res: Respo
         ...classData,
         enrollments: enrichedEnrollments,
         teacher_class_assignments: enrichedTeacherAssignments,
+        teacher_subject_assignments: enrichedSubjectTeacherAssignments,
         class_subject_assignments: enrichedSubjectAssignments,
         student_count: enrichedEnrollments.filter((item: any) => !item.unenrolled_at).length,
         subject_count: enrichedSubjectAssignments.length,

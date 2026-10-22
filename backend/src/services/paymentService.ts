@@ -54,7 +54,7 @@ export async function recordPayment(
   // Verify student exists
   const { data: student } = await supabaseAdmin
     .from('students')
-    .select('id, first_name, last_name, admission_number')
+    .select('id, first_name, middle_name, last_name, admission_number')
     .eq('id', input.student_id)
     .single();
 
@@ -324,7 +324,7 @@ export async function getPayments(filters?: {
     .from('payments')
     .select(`
       *,
-      student:students(id, admission_number, first_name, last_name),
+      student:students(id, admission_number, first_name, middle_name, last_name),
       receipt:receipts(*)
     `);
 

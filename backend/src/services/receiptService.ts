@@ -12,7 +12,7 @@ export async function getReceipts(filters?: {
     .from('receipts')
     .select(`
       *,
-      student:students(id, admission_number, first_name, last_name),
+      student:students(id, admission_number, first_name, middle_name, last_name),
       payment:payments(payment_reference, purpose)
     `);
 
@@ -155,7 +155,7 @@ export async function getReceiptQueue() {
     .from('receipts')
     .select(`
       *,
-      student:students(id, admission_number, first_name, last_name)
+      student:students(id, admission_number, first_name, middle_name, last_name)
     `)
     .eq('status', 'pending')
     .order('created_at', { ascending: true });

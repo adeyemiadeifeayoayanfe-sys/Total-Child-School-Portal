@@ -1,12 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { authenticate, authorizeSuperAdmin } from '../middleware/auth';
+import { authenticate, authorizeAdmin, authorizeSuperAdmin } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { correctScoreSchema } from '../validators/scoreReview';
-import { correctScoreAsSuperAdmin, getScoreReviewBroadsheet, getScoreReviewOverview, getScoreReviewStudent } from '../services/scoreReviewService';
+import { correctScoreAsSuperAdmin, getLiveStudentResultReview, getScoreReviewBroadsheet, getScoreReviewOverview, getScoreReviewStudent } from '../services/scoreReviewService';
 
 const router = Router();
 
-router.use(authenticate, authorizeSuperAdmin);
+router.use(authenticate, authorizeAdmin);
 
 router.get('/overview', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -29,7 +29,14 @@ router.get('/student/:studentId', async (req: Request, res: Response, next: Next
   } catch (error) { next(error); }
 });
 
-router.post('/scores/:id/correct', validate(correctScoreSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/student/:studentId/result-preview', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await getLiveStudentResultReview(req.params.studentId, req.query as any);
+    res.json({ success: true, data });
+  } catch (error) { next(error); }
+});
+
+router.post('/scores/:id/correct', authorizeSuperAdmin, validate(correctScoreSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = await correctScoreAsSuperAdmin(req.params.id, req.body, req.authUserId!);
     res.json({ success: true, data });

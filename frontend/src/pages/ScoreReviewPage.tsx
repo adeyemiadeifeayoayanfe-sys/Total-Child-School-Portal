@@ -8,6 +8,8 @@ import Modal from '../components/ui/Modal';
 import Table from '../components/ui/Table';
 import { StatusBadge } from '../components/ui/Badge';
 import { LoadingContainer } from '../components/ui/Spinner';
+import { useAuth } from '../context/AuthContext';
+import { formatStudentName } from '../utils/studentName';
 
 interface SessionWithTerms extends AcademicSession { terms?: Term[]; }
 interface ReviewRow {
@@ -22,7 +24,7 @@ interface BroadsheetData {
   class: { name: string }; subject: { name: string; code?: string | null };
   term: Term; teacher?: { profile?: { first_name?: string; last_name?: string } } | null;
   broadsheet?: { status: string } | null;
-  students: Array<{ student: { id: string; admission_number: string; first_name: string; last_name: string }; score: ScoreRecord | null; score_status: string }>;
+  students: Array<{ student: { id: string; admission_number: string; first_name: string; middle_name?: string | null; last_name: string }; score: ScoreRecord | null; score_status: string }>;
 }
 interface AuditLog { id: string; created_at: string; metadata?: { reason?: string }; old_value?: { value?: number }; new_value?: { value?: number }; user?: { email?: string } | null; }
 
@@ -31,6 +33,7 @@ const stageLabels: Record<string, string> = { classes: 'Classes', first_test: '1
 export default function ScoreReviewPage() {
   const { call } = useApi();
   const { showToast } = useToast();
+  const { user, activeRole } = useAuth();
   const [sessions, setSessions] = useState<SessionWithTerms[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -55,6 +58,7 @@ export default function ScoreReviewPage() {
   const [value, setValue] = useState('');
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
+  const isSuperAdmin = (activeRole || user?.role) === 'super_admin';
 
   const selectedSession = sessions.find((session) => session.id === sessionId);
   const terms = selectedSession?.terms || [];
@@ -96,6 +100,17 @@ export default function ScoreReviewPage() {
 
   useEffect(() => { fetchOverview(); }, [fetchOverview]);
 
+  useEffect(() => {
+    if (!selectedRow || !sessionId || !termId) return;
+    const refreshDetails = async () => {
+      const params = new URLSearchParams({ class_id: selectedRow.class_id, subject_id: selectedRow.subject_id, session_id: sessionId, term_id: termId });
+      const result = await call(`/score-review/broadsheet?${params.toString()}`);
+      if (result.success && result.data) setBroadsheet(result.data as BroadsheetData);
+    };
+    const interval = window.setInterval(() => { void refreshDetails(); }, 20000);
+    return () => window.clearInterval(interval);
+  }, [call, selectedRow, sessionId, termId]);
+
   const loadBroadsheet = async (row: ReviewRow) => {
     setSelectedRow(row); setSelectedStudentId(''); setStudentReview(null); setDetailsLoading(true);
     const params = new URLSearchParams({ class_id: row.class_id, subject_id: row.subject_id, session_id: sessionId, term_id: termId });
@@ -109,8 +124,8 @@ export default function ScoreReviewPage() {
   const loadStudentReview = async (studentId: string) => {
     if (!selectedRow) return;
     setSelectedStudentId(studentId);
-    const params = new URLSearchParams({ class_id: selectedRow.class_id, subject_id: selectedRow.subject_id, session_id: sessionId, term_id: termId });
-    const result = await call(`/score-review/student/${studentId}?${params.toString()}`);
+    const params = new URLSearchParams({ class_id: selectedRow.class_id, session_id: sessionId, term_id: termId });
+    const result = await call(`/score-review/student/${studentId}/result-preview?${params.toString()}`);
     if (result.success && result.data) setStudentReview(result.data);
     else showToast('error', result.error || 'Failed to load student score review');
   };
@@ -146,7 +161,7 @@ export default function ScoreReviewPage() {
   if (loading && sessions.length === 0) return <LoadingContainer text="Loading score review..." />;
   const metrics = summary || { class_subjects: 0, with_saved_scores: 0, incomplete_entries: 0, missing_scores: 0, submitted: 0, unsubmitted: 0 };
   return <div>
-    <div className="page-header"><div><h1 className="page-title">Score Review</h1><p className="page-description">Review saved teacher scores before broadsheet submission and record controlled corrections.</p></div><Button variant="secondary" onClick={fetchOverview} disabled={loading}>Refresh</Button></div>
+    <div className="page-header"><div><h1 className="page-title">General Review</h1><p className="page-description">Monitor roster-based broadsheets and live, provisional student results before submission.</p></div><Button variant="secondary" onClick={fetchOverview} disabled={loading}>Refresh</Button></div>
     <Card hover={false}><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
       <label><span className="form-label">Session</span><select className="form-input" value={sessionId} onChange={(event) => { const next = sessions.find((session) => session.id === event.target.value); setSessionId(event.target.value); setTermId(next?.terms?.find((term) => term.is_current)?.id || next?.terms?.[0]?.id || ''); }}><option value="">Select session</option>{sessions.map((session) => <option key={session.id} value={session.id}>{session.name}</option>)}</select></label>
       <label><span className="form-label">Term</span><select className="form-input" value={termId} onChange={(event) => setTermId(event.target.value)}>{terms.map((term) => <option key={term.id} value={term.id}>{term.name} - {stageLabels[term.assessment_stage]}</option>)}</select></label>
@@ -168,12 +183,12 @@ export default function ScoreReviewPage() {
     <Modal open={!!selectedRow} onClose={() => { if (!detailsLoading) { setSelectedRow(null); setBroadsheet(null); } }} title={broadsheet ? `${broadsheet.class.name} - ${broadsheet.subject.name}` : 'Broadsheet review'} size="lg">
       {detailsLoading ? <div className="py-8 text-center">Loading saved scores...</div> : broadsheet && <div className="grid gap-5"><div className="flex flex-wrap gap-3 text-sm"><StatusBadge status={broadsheet.broadsheet?.status || 'unsubmitted'} /><span>Stage: <strong>{stageLabels[broadsheet.term.assessment_stage]}</strong></span><span>Teacher: <strong>{broadsheet.teacher ? `${broadsheet.teacher.profile?.first_name || ''} ${broadsheet.teacher.profile?.last_name || ''}`.trim() : 'Unassigned'}</strong></span></div>
         <Table data={broadsheet.students.map((item) => ({ id: item.student.id, ...item }))} emptyMessage="No enrolled students found." columns={[
-          { key: 'student', header: 'Student', render: (item: any) => <button className="text-left font-medium text-blue-700 hover:underline" onClick={() => loadStudentReview(item.student.id)}>{item.student.last_name} {item.student.first_name}<div className="text-xs text-gray-500">{item.student.admission_number}</div></button> },
+          { key: 'student', header: 'Student', render: (item: any) => <button className="text-left font-medium text-blue-700 hover:underline" onClick={() => loadStudentReview(item.student.id)}>{formatStudentName(item.student)}<div className="text-xs text-gray-500">{item.student.admission_number}</div></button> },
           ...activeFields.map((activeField) => ({ key: activeField, header: activeField === 'test1' ? 'Test 1' : activeField === 'test2' ? 'Test 2' : activeField === 'test3' ? 'Test 3' : 'Exam', render: (item: any) => item.score ? String(item.score[activeField]) : 'Not entered' })),
           { key: 'total', header: 'Total', render: (item: any) => item.score ? item.score.total : '-' }, { key: 'state', header: 'State', render: (item: any) => <StatusBadge status={item.score_status === 'saved' ? 'completed' : item.score_status === 'missing' ? 'pending' : 'returned'} /> },
-          { key: 'correct', header: '', render: (item: any) => item.score ? <Button size="sm" variant="outline" onClick={() => openCorrection(`${item.student.first_name} ${item.student.last_name}`, item.score)}>Correct</Button> : '-' },
+          ...(isSuperAdmin ? [{ key: 'correct', header: '', render: (item: any) => item.score ? <Button size="sm" variant="outline" onClick={() => openCorrection(formatStudentName(item.student), item.score)}>Correct</Button> : '-' }] : []),
         ]} />
-        {selectedStudentId && <div className="rounded border p-3 text-sm">Individual review: <strong>{studentReview?.student?.first_name || broadsheet.students.find((item) => item.student.id === selectedStudentId)?.student.first_name} {studentReview?.student?.last_name || broadsheet.students.find((item) => item.student.id === selectedStudentId)?.student.last_name}</strong>. {studentReview?.score ? `Saved total: ${studentReview.score.total}.` : 'No saved score exists for this subject.'}</div>}
+        {selectedStudentId && <div className="rounded border p-4 text-sm"><div className="mb-3">Individual live result: <strong>{formatStudentName(studentReview?.student || broadsheet.students.find((item) => item.student.id === selectedStudentId)?.student)}</strong>. {studentReview?.status === 'complete' ? 'All current assessment components are recorded.' : 'This is a provisional result; pending assessments are not treated as zero.'}</div>{studentReview?.subjects?.length ? <div className="grid gap-2">{studentReview.subjects.map((item: any) => <div className="flex flex-wrap items-center justify-between gap-2 rounded border p-2" key={item.subject?.id}><span className="font-medium">{item.subject?.name || 'Subject'}</span><span>Recorded subtotal: <strong>{item.provisional_total}</strong></span><span>{item.pending_fields?.length ? `Pending: ${item.pending_fields.map((field: string) => field === 'test1' ? 'Test 1' : field === 'test2' ? 'Test 2' : field === 'test3' ? 'Test 3' : 'Exam').join(', ')}` : `Final total: ${item.final_total}`}</span><StatusBadge status={item.status === 'complete' ? 'completed' : item.status === 'not_started' ? 'pending' : 'returned'} /></div>)}</div> : <span>Loading result preview...</span>}</div>}
         <div><h3 className="mb-2 font-semibold">Recent correction history</h3>{auditLogs.length ? <div className="grid gap-2">{auditLogs.map((log) => <div key={log.id} className="rounded border p-3 text-sm"><strong>{log.user?.email || 'Super Admin'}</strong> changed {log.old_value?.value} to {log.new_value?.value}. {log.metadata?.reason && <span>Reason: {log.metadata.reason}</span>}<div className="text-xs text-gray-500">{new Date(log.created_at).toLocaleString()}</div></div>)}</div> : <p className="text-sm text-gray-500">No score corrections recorded yet.</p>}</div>
       </div>}
     </Modal>

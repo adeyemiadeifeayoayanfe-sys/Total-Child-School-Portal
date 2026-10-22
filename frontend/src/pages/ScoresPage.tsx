@@ -6,6 +6,7 @@ import Table from '../components/ui/Table';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
+import { formatStudentName } from '../utils/studentName';
 
 const stageLabels: Record<AssessmentStage, string> = {
   classes: 'Classes',
@@ -361,8 +362,7 @@ export default function ScoresPage() {
       render: (score: ScoreEntryRow) => (
         <div>
           <div className="font-semibold">
-            {score.student?.first_name}{' '}
-            {score.student?.last_name}
+            {formatStudentName(score.student)}
           </div>
           <div className="text-xs text-gray-500">
             {score.student?.admission_number}

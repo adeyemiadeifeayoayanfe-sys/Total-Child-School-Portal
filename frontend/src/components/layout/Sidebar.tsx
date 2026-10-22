@@ -49,6 +49,7 @@ export default function Sidebar({
         { to: '/sessions', icon: 'SE', label: 'Sessions' },
         { to: '/attendance', icon: 'AT', label: 'Attendance' },
         { to: '/broadsheets', icon: 'BR', label: 'Broadsheets' },
+        { to: '/score-review', icon: 'GR', label: 'General Review' },
         { to: '/results', icon: 'RE', label: 'Results' },
       ],
     });
@@ -120,7 +121,6 @@ export default function Sidebar({
       label: 'System',
       items: [
         { to: '/settings', icon: 'SE', label: 'Settings' },
-        { to: '/score-review', icon: 'SR', label: 'Score Review' },
         { to: '/audit-logs', icon: 'AU', label: 'Audit Logs' },
         { to: '/users', icon: 'US', label: 'Users' },
       ],

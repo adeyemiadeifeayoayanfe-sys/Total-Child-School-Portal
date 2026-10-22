@@ -121,7 +121,7 @@ export async function getScoreReviewBroadsheet(input: { class_id: string; subjec
   const [{ data: classData }, { data: subject }, { data: enrolled, error: enrollmentError }, { data: scores, error: scoreError }, { data: submission }, { data: teacherAssignment }] = await Promise.all([
     supabaseAdmin.from('classes').select('id, name').eq('id', input.class_id).single(),
     supabaseAdmin.from('subjects').select('id, name, code').eq('id', input.subject_id).single(),
-    supabaseAdmin.from('enrollments').select('student:students(id, admission_number, first_name, last_name)').eq('class_id', input.class_id).eq('session_id', input.session_id).is('unenrolled_at', null),
+    supabaseAdmin.from('enrollments').select('student:students(id, admission_number, first_name, middle_name, last_name)').eq('class_id', input.class_id).eq('session_id', input.session_id).is('unenrolled_at', null),
     supabaseAdmin.from('scores').select('*').eq('class_id', input.class_id).eq('subject_id', input.subject_id).eq('session_id', input.session_id).eq('term_id', input.term_id),
     supabaseAdmin.from('broadsheet_submissions').select('*').eq('class_id', input.class_id).eq('subject_id', input.subject_id).eq('session_id', input.session_id).eq('term_id', input.term_id).maybeSingle(),
     supabaseAdmin.from('teacher_subject_assignments').select('teacher_id, teacher:teachers(id, profile:profiles(first_name, last_name))').eq('class_id', input.class_id).eq('subject_id', input.subject_id).eq('session_id', input.session_id).is('unassigned_at', null).maybeSingle(),
@@ -133,7 +133,7 @@ export async function getScoreReviewBroadsheet(input: { class_id: string; subjec
     const student = item.student;
     const score = scoreMap.get(student.id) || null;
     return { student, score, score_status: score ? scoreCompleteness(score, term!.assessment_stage) : 'missing' };
-  }).sort((left: any, right: any) => `${left.student.last_name} ${left.student.first_name}`.localeCompare(`${right.student.last_name} ${right.student.first_name}`));
+  }).sort((left: any, right: any) => `${left.student.first_name} ${left.student.middle_name || ''} ${left.student.last_name}`.localeCompare(`${right.student.first_name} ${right.student.middle_name || ''} ${right.student.last_name}`));
   return { class: classData, subject, term, teacher: teacherAssignment?.teacher || null, broadsheet: submission || null, students };
 }
 
@@ -142,6 +142,36 @@ export async function getScoreReviewStudent(studentId: string, input: { class_id
   const record = broadsheet.students.find((item: any) => item.student.id === studentId);
   if (!record) throw new NotFoundError('Student is not enrolled in this class for the selected session');
   return { ...record, context: { class: broadsheet.class, subject: broadsheet.subject, term: broadsheet.term, broadsheet_status: broadsheet.broadsheet?.status || 'unsubmitted' } };
+}
+
+export async function getLiveStudentResultReview(studentId: string, input: { class_id: string; session_id: string; term_id: string }) {
+  const term = await getTermContext(input.session_id, input.term_id);
+  if (!term) throw new NotFoundError('Term not found');
+  const [{ data: enrollment, error: enrollmentError }, { data: assignments, error: assignmentError }, { data: scores, error: scoreError }] = await Promise.all([
+    supabaseAdmin.from('enrollments').select('student:students(id, admission_number, first_name, middle_name, last_name)').eq('student_id', studentId).eq('class_id', input.class_id).eq('session_id', input.session_id).is('unenrolled_at', null).maybeSingle(),
+    supabaseAdmin.from('class_subject_assignments').select('subject_id, subject:subjects(id, name, code)').eq('class_id', input.class_id).eq('session_id', input.session_id).eq('is_active', true),
+    supabaseAdmin.from('scores').select('*').eq('student_id', studentId).eq('class_id', input.class_id).eq('session_id', input.session_id).eq('term_id', input.term_id),
+  ]);
+  if (enrollmentError || assignmentError || scoreError) throw new AppError('Failed to load live student result preview', 500);
+  if (!enrollment?.student) throw new NotFoundError('Student is not enrolled in this class for the selected session');
+  const fields = term.assessment_stage === 'examination' ? ['test1', 'test2', 'test3', 'examination'] : term.assessment_stage === 'third_test' ? ['test1', 'test2', 'test3'] : term.assessment_stage === 'second_test' ? ['test1', 'test2'] : term.assessment_stage === 'first_test' ? ['test1'] : [];
+  const scoreBySubject = new Map((scores || []).map((score: any) => [score.subject_id, score]));
+  const subjects = (assignments || []).map((assignment: any) => {
+    const score = scoreBySubject.get(assignment.subject_id) || null;
+    const recorded = fields.filter((field) => score?.[field] !== null && score?.[field] !== undefined);
+    const pending = fields.filter((field) => !recorded.includes(field));
+    const subtotal = recorded.reduce((sum, field) => sum + Number(score[field]), 0);
+    return {
+      subject: assignment.subject,
+      score,
+      recorded_fields: recorded,
+      pending_fields: pending,
+      provisional_total: subtotal,
+      status: fields.length === 0 ? 'not_started' : pending.length ? (recorded.length ? 'in_progress' : 'not_started') : 'complete',
+      final_total: pending.length ? null : score?.total ?? subtotal,
+    };
+  });
+  return { student: enrollment.student, term, class_id: input.class_id, subjects, status: subjects.length && subjects.every((item: any) => item.status === 'complete') ? 'complete' : 'in_progress' };
 }
 
 export async function correctScoreAsSuperAdmin(scoreId: string, input: { field: string; value: number; reason: string; expected_updated_at: string }, actorId: string) {

@@ -9,6 +9,7 @@ import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { formatStudentName } from '../utils/studentName';
 
 export default function StudentsPage() {
   const { call } = useApi();
@@ -358,7 +359,7 @@ export default function StudentsPage() {
       key: 'name',
       header: 'Name',
       render: (student: Student) =>
-        `${student.first_name} ${student.last_name}`,
+        formatStudentName(student),
     },
     {
       key: 'gender',

@@ -80,7 +80,7 @@ export async function createParent(
     } = await supabaseAdmin
       .from('students')
       .select(
-        'id, admission_number, first_name, last_name'
+        'id, admission_number, first_name, middle_name, last_name'
       )
       .in('admission_number', admissionNumbers);
 
