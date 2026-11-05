@@ -9,7 +9,10 @@ import {
 } from '../types';
 import { LoadingContainer } from '../components/ui/Spinner';
 import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Modal from '../components/ui/Modal';
 import { formatStudentName } from '../utils/studentName';
+import { broadsheetDocument, openPrintableDocument } from '../utils/printDocuments';
 
 export default function DashboardPage() {
   const { user, activeRole } = useAuth();
@@ -22,6 +25,7 @@ export default function DashboardPage() {
   const [dashboardDataRole, setDashboardDataRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [broadsheetPreviewHtml, setBroadsheetPreviewHtml] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -304,6 +308,18 @@ export default function DashboardPage() {
 
   if (currentRole === 'teacher') {
     const data = dashboardData as TeacherDashboardData;
+    const classMap = new Map<string, { class_id: string; session_id: string; name?: string }>();
+    [...(data.classes || []), ...(data.subjects || [])].forEach((assignment: any) => {
+      if (assignment.class_id && assignment.session_id) classMap.set(assignment.class_id, { class_id: assignment.class_id, session_id: assignment.session_id, name: assignment.class?.name });
+    });
+    const broadsheetClasses = Array.from(classMap.values()).filter((item) => !data.current_term || item.session_id === data.current_term.session_id);
+
+    const openFullClassBroadsheet = async (item: any) => {
+      if (!data.current_term) return;
+      const params = new URLSearchParams({ class_id: item.class_id, session_id: item.session_id, term_id: data.current_term.id });
+      const result = await call(`/broadsheets/full-preview?${params.toString()}`);
+      if (result.success && result.data) setBroadsheetPreviewHtml(broadsheetDocument(result.data));
+    };
 
     return (
       <div>
@@ -470,6 +486,16 @@ export default function DashboardPage() {
             </div>
           </Card>
         )}
+        {broadsheetClasses.length > 0 && (
+          <Card title="Full Class Broadsheets" subtitle="Complete roster-first broadsheets for your authorized classes, including unentered scores." className="no-print">
+            <div className="grid gap-3">
+              {broadsheetClasses.map((item: any) => <div key={`${item.class_id}-${item.session_id}`} className="flex flex-wrap items-center justify-between gap-3 rounded border p-3"><div><div className="font-semibold">{item.name || 'Assigned class'}</div><div className="text-sm text-gray-500">{data.current_term?.name || 'Current term'}</div></div><Button size="sm" onClick={() => openFullClassBroadsheet(item)}>Open Full Broadsheet</Button></div>)}
+            </div>
+          </Card>
+        )}
+        <Modal open={!!broadsheetPreviewHtml} onClose={() => setBroadsheetPreviewHtml('')} title="Full Class Broadsheet" size="lg" footer={<Button onClick={() => openPrintableDocument(broadsheetPreviewHtml)}>Print / Save as PDF</Button>}>
+          <iframe title="Full class broadsheet preview" className="h-[620px] w-full border-0" srcDoc={broadsheetPreviewHtml} />
+        </Modal>
       </div>
     );
   }
