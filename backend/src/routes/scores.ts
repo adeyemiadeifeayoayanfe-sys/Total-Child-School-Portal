@@ -126,14 +126,12 @@ router.put(
         );
       }
       const teacher = await getTeacherRecordForUser(req.authUserId!);
-      if (existing.entered_by !== req.authUserId) {
-        await ensureTeacherAssignedToSubject(
-          teacher.id,
-          existing.subject_id,
-          existing.class_id,
-          existing.session_id,
-        );
-      }
+      await ensureTeacherAssignedToSubject(
+        teacher.id,
+        existing.subject_id,
+        existing.class_id,
+        existing.session_id,
+      );
       const requested = req.body as {
         test1?: number | null;
         test2?: number | null;

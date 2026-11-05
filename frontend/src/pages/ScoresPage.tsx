@@ -87,6 +87,8 @@ export default function ScoresPage() {
   });
 
   const [saving, setSaving] = useState(false);
+  const [draftScores, setDraftScores] = useState<Record<string, string>>({});
+  const [selectedComponent, setSelectedComponent] = useState<'test1' | 'test2' | 'test3' | 'examination'>('test1');
 
   const fetchTeacherData = useCallback(async () => {
     setAssignmentLoading(true);
@@ -211,6 +213,7 @@ export default function ScoresPage() {
 
     if (result.success && Array.isArray(result.data)) {
       setScores(result.data);
+      setDraftScores({});
     } else {
       setScores([]);
     }
@@ -340,6 +343,38 @@ export default function ScoresPage() {
 
   const canEdit = assessmentStage !== 'classes';
 
+  const editableComponents = (['test1', 'test2', 'test3', 'examination'] as const).filter((component) => {
+    if (component === 'test1') return assessmentStage !== 'classes';
+    if (component === 'test2') return ['second_test', 'third_test', 'examination'].includes(assessmentStage);
+    if (component === 'test3') return ['third_test', 'examination'].includes(assessmentStage);
+    return assessmentStage === 'examination';
+  });
+
+  useEffect(() => {
+    if (!editableComponents.includes(selectedComponent)) setSelectedComponent(editableComponents[editableComponents.length - 1] || 'test1');
+  }, [assessmentStage, selectedComponent, editableComponents]);
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => { if (Object.keys(draftScores).length) { event.preventDefault(); event.returnValue = ''; } };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [draftScores]);
+
+  const saveBatchScores = async () => {
+    if (!selectedClass || !selectedSubject || !termId || !Object.keys(draftScores).length) return;
+    const entries = Object.entries(draftScores).filter(([, value]) => value !== '').map(([studentId, value]) => ({ student_id: studentId, class_id: selectedClass, subject_id: selectedSubject, session_id: currentSessionId, term_id: termId, [selectedComponent]: Number(value) }));
+    if (!entries.length) { showToast('error', 'Enter at least one score before saving'); return; }
+    setSaving(true);
+    const result = await call('/scores/bulk', { method: 'POST', body: { scores: entries } });
+    if (result.success) {
+      const summary = result.data as { success?: number; failed?: number; errors?: Array<{ error: string }> };
+      if (summary.failed) showToast('error', `${summary.success || 0} saved; ${summary.failed} failed. ${summary.errors?.[0]?.error || ''}`);
+      else showToast('success', `${summary.success || entries.length} score${entries.length === 1 ? '' : 's'} saved successfully`);
+      await fetchScores();
+    } else showToast('error', result.error || 'Failed to save scores');
+    setSaving(false);
+  };
+
   const goToNextSubject = () => {
     const currentIndex = availableSubjects.findIndex(
       (assignment) => assignment.subject_id === selectedSubject
@@ -417,16 +452,9 @@ export default function ScoresPage() {
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: 'Score Entry',
       render: (score: ScoreEntryRow) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => openEditModal(score)}
-          disabled={!canEdit}
-        >
-          {canEdit ? (score.id ? 'Edit Score' : 'Enter Score') : 'Locked'}
-        </Button>
+        <input type="number" min="0" max={selectedComponent === 'examination' ? 40 : 20} className="form-input min-w-[90px]" disabled={!canEdit} value={draftScores[score.student_id] ?? ((score as any)[selectedComponent] ?? '')} onChange={(event) => setDraftScores((current) => ({ ...current, [score.student_id]: event.target.value }))} />
       ),
     },
   ];
@@ -562,16 +590,10 @@ export default function ScoresPage() {
             title="Student Scores"
             subtitle={availableSubjects.find((assignment) => assignment.subject_id === selectedSubject)?.subject?.name}
             action={
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToNextSubject}
-                disabled={availableSubjects.findIndex((assignment) => assignment.subject_id === selectedSubject) === availableSubjects.length - 1}
-              >
-                Next Subject
-              </Button>
+              <div className="flex flex-wrap gap-2"><Button variant="primary" size="sm" onClick={saveBatchScores} loading={saving} disabled={!canEdit || Object.keys(draftScores).length === 0}>Save Scores{Object.keys(draftScores).length ? ` (${Object.keys(draftScores).length})` : ''}</Button><Button variant="outline" size="sm" onClick={goToNextSubject} disabled={availableSubjects.findIndex((assignment) => assignment.subject_id === selectedSubject) === availableSubjects.length - 1}>Next Subject</Button></div>
             }
           >
+            <div className="mb-4 grid gap-3 md:grid-cols-2"><label><span className="form-label">Assessment Component</span><select className="form-select" value={selectedComponent} disabled={!canEdit} onChange={(event) => setSelectedComponent(event.target.value as typeof selectedComponent)}>{editableComponents.map((component) => <option key={component} value={component}>{component === 'test1' ? 'First Test (0–20)' : component === 'test2' ? 'Second Test (0–20)' : component === 'test3' ? 'Third Test (0–20)' : 'Examination (0–40)'}</option>)}</select></label><div className="self-end text-sm text-gray-500">Changes stay as drafts until you click <strong>Save Scores</strong>. Modified entries: {Object.keys(draftScores).length}.</div></div>
             <Table
               columns={columns}
               data={scores}

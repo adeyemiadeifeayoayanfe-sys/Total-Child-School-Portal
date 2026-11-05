@@ -306,7 +306,7 @@ export async function getTeacherAssignments(teacherId: string) {
 
   const inheritedAssignments: any[] = [];
 
-  for (const classAssignment of classAssignments || []) {
+  for (const classAssignment of (classAssignments || []).filter((assignment: any) => assignment.is_class_teacher)) {
     const { data: classSubjects, error: classSubjectError } = await supabaseAdmin
       .from('class_subject_assignments')
       .select(`

@@ -62,13 +62,14 @@ export async function ensureTeacherAssignedToSubject(
     return directAssignment;
   }
 
-  // A class teacher automatically gets all subjects assigned to that class.
+  // Only the designated Class Teacher automatically gets all subjects assigned to that class.
   const { data: classAssignment, error: classError } = await supabaseAdmin
     .from('teacher_class_assignments')
     .select('id')
     .eq('teacher_id', teacherId)
     .eq('class_id', classId)
     .eq('session_id', sessionId)
+    .eq('is_class_teacher', true)
     .is('unassigned_at', null)
     .maybeSingle();
 

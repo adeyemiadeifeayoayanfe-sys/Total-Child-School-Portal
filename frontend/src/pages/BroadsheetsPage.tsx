@@ -32,19 +32,10 @@ export default function BroadsheetsPage() {
     setLoading(true);
     const result = await call('/broadsheets');
     if (result.success && result.data) {
-      const saved = result.data as BroadsheetSubmission[];
-      if (isTeacher) {
-        const [assignmentResult, termResult] = await Promise.all([call('/teachers/my/assignments'), call('/sessions/current-term')]);
-        const term: any = termResult.success ? termResult.data : null;
-        const assignments = assignmentResult.success ? (assignmentResult.data as any)?.subjectAssignments || [] : [];
-        const previewRows = term ? assignments.filter((assignment: any) => assignment.session_id === term.session_id)
-          .filter((assignment: any) => !saved.some((sheet) => sheet.class_id === assignment.class_id && sheet.subject_id === assignment.subject_id && sheet.session_id === term.session_id && sheet.term_id === term.id))
-          .map((assignment: any) => ({ id: `preview:${assignment.class_id}:${assignment.subject_id}:${term.id}`, class_id: assignment.class_id, subject_id: assignment.subject_id, session_id: term.session_id, term_id: term.id, teacher_id: '', status: 'draft', submitted_at: null, approved_at: null, returned_at: null, return_reason: null, class: assignment.class, subject: assignment.subject } as BroadsheetSubmission)) : [];
-        setBroadsheets([...previewRows, ...saved]);
-      } else setBroadsheets(saved);
+      setBroadsheets(result.data as BroadsheetSubmission[]);
     }
     setLoading(false);
-  }, [call, isTeacher]);
+  }, [call]);
 
   useEffect(() => {
     fetchBroadsheets();

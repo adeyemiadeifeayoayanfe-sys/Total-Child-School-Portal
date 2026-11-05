@@ -6,6 +6,7 @@ import { AppError, NotFoundError, ForbiddenError } from '../middleware/errorHand
 import { submitBroadsheetSchema, returnBroadsheetSchema, approveBroadsheetSchema } from '../validators/broadsheet';
 import { submitBroadsheet, returnBroadsheet, approveBroadsheet, getBroadsheets, getBroadsheetById, getPrintableBroadsheet, getBroadsheetPreview, getFullPrintableBroadsheet, checkAllBroadsheetsSubmitted } from '../services/broadsheetService';
 import { getTeacherRecordForUser } from '../services/accessService';
+import { getTeacherAssignments } from '../services/teacherService';
 
 const router = Router();
 
@@ -35,6 +36,48 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     };
 
     const broadsheets = await getBroadsheets(filters);
+    if (teacherId) {
+      const { data: currentTerm } = await supabaseAdmin
+        .from('terms')
+        .select('id, session_id')
+        .eq('is_current', true)
+        .maybeSingle();
+      if (!currentTerm) {
+        res.json({ success: true, data: broadsheets });
+        return;
+      }
+      const assignments = await getTeacherAssignments(teacherId);
+      const currentAssignments = (assignments.subjectAssignments || []).filter((assignment: any) =>
+        assignment.session_id === currentTerm.session_id &&
+        (!filters.class_id || assignment.class_id === filters.class_id) &&
+        (!filters.subject_id || assignment.subject_id === filters.subject_id),
+      );
+      const classIds = [...new Set(currentAssignments.map((assignment: any) => assignment.class_id))];
+      const subjectIds = [...new Set(currentAssignments.map((assignment: any) => assignment.subject_id))];
+      const { data: activeClassSubjects } = classIds.length && subjectIds.length
+        ? await supabaseAdmin.from('class_subject_assignments').select('class_id, subject_id').eq('session_id', currentTerm.session_id).eq('is_active', true).in('class_id', classIds).in('subject_id', subjectIds)
+        : { data: [] };
+      const activeKeys = new Set((activeClassSubjects || []).map((item: any) => `${item.class_id}:${item.subject_id}`));
+      const virtualDrafts = currentAssignments
+        .filter((assignment: any) => activeKeys.has(`${assignment.class_id}:${assignment.subject_id}`))
+        .filter((assignment: any) => !broadsheets.some((sheet: any) => sheet.class_id === assignment.class_id && sheet.subject_id === assignment.subject_id && sheet.session_id === currentTerm.session_id && sheet.term_id === currentTerm.id))
+        .map((assignment: any) => ({
+          id: `preview:${assignment.class_id}:${assignment.subject_id}:${currentTerm.id}`,
+          class_id: assignment.class_id,
+          subject_id: assignment.subject_id,
+          session_id: currentTerm.session_id,
+          term_id: currentTerm.id,
+          teacher_id: teacherId,
+          status: 'draft',
+          submitted_at: null,
+          approved_at: null,
+          returned_at: null,
+          return_reason: null,
+          class: assignment.class,
+          subject: assignment.subject,
+        }));
+      broadsheets.unshift(...virtualDrafts);
+    }
     res.json({
       success: true,
       data: broadsheets,
