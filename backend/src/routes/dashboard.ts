@@ -252,11 +252,28 @@ router.get('/teacher', authenticate, authorizeTeacher, async (req: Request, res:
     }
 
     // Get pending broadsheets.
-    const { data: pendingBroadsheets } = await supabaseAdmin
+    const { data: savedPendingBroadsheets } = await supabaseAdmin
       .from('broadsheet_submissions')
       .select('*')
       .eq('teacher_id', teacher.id)
       .in('status', ['draft', 'returned']);
+
+    const assignedBroadsheets = currentTerm
+      ? effectiveSubjects
+        .filter((assignment: any) => assignment.session_id === currentTerm.session_id)
+        .filter((assignment: any) => !(savedPendingBroadsheets || []).some((sheet: any) => sheet.class_id === assignment.class_id && sheet.subject_id === assignment.subject_id && sheet.term_id === currentTerm.id))
+        .map((assignment: any) => ({
+          id: `preview:${assignment.class_id}:${assignment.subject_id}:${currentTerm.id}`,
+          class_id: assignment.class_id,
+          subject_id: assignment.subject_id,
+          session_id: currentTerm.session_id,
+          term_id: currentTerm.id,
+          status: 'draft',
+          class: assignment.class,
+          subject: assignment.subject,
+        }))
+      : [];
+    const pendingBroadsheets = [...assignedBroadsheets, ...(savedPendingBroadsheets || [])];
 
     const { count: unreadNotifications } = await supabaseAdmin
       .from('notifications')
@@ -273,10 +290,10 @@ router.get('/teacher', authenticate, authorizeTeacher, async (req: Request, res:
         current_term: currentTerm || null,
         assessment_stage: currentTerm?.assessment_stage || null,
         today_attendance_taken: todayAttendanceTaken,
-        pending_broadsheets: pendingBroadsheets || [],
+        pending_broadsheets: pendingBroadsheets,
         total_classes: classAssignments?.length || 0,
         total_subjects: effectiveSubjects.length,
-        pending_broadsheet_count: pendingBroadsheets?.length || 0,
+        pending_broadsheet_count: pendingBroadsheets.length,
         unread_notifications: unreadNotifications || 0,
       },
     });

@@ -8,7 +8,6 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
-import { formatStudentName } from '../utils/studentName';
 import { broadsheetDocument, openPrintableDocument } from '../utils/printDocuments';
 
 export default function BroadsheetsPage() {
@@ -23,6 +22,11 @@ export default function BroadsheetsPage() {
   const [returnReason, setReturnReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
+  const [teacherBroadsheetHtml, setTeacherBroadsheetHtml] = useState('');
+  const [teacherBroadsheetLoading, setTeacherBroadsheetLoading] = useState(false);
+  const [teacherClasses, setTeacherClasses] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedTeacherClassId, setSelectedTeacherClassId] = useState('');
+  const [teacherAcademicContext, setTeacherAcademicContext] = useState<{ sessionId: string; termId: string } | null>(null);
 
   const role = activeRole || user?.role;
   const isTeacher = role === 'teacher';
@@ -37,9 +41,53 @@ export default function BroadsheetsPage() {
     setLoading(false);
   }, [call]);
 
+  const loadTeacherBroadsheet = useCallback(async (classId = selectedTeacherClassId, context = teacherAcademicContext) => {
+    if (!isTeacher || !classId || !context) return;
+    setTeacherBroadsheetLoading(true);
+    const params = new URLSearchParams({ class_id: classId, session_id: context.sessionId, term_id: context.termId });
+    const result = await call(`/broadsheets/full-preview?${params.toString()}`);
+    if (result.success && result.data) setTeacherBroadsheetHtml(broadsheetDocument(result.data));
+    else setTeacherBroadsheetHtml('');
+    setTeacherBroadsheetLoading(false);
+  }, [call, isTeacher, selectedTeacherClassId, teacherAcademicContext]);
+
+  const initializeTeacherBroadsheet = useCallback(async () => {
+    if (!isTeacher) return;
+    setTeacherBroadsheetLoading(true);
+    const [assignmentResult, termResult] = await Promise.all([call('/teachers/my/assignments'), call('/sessions/current-term')]);
+    const term: any = termResult.success ? termResult.data : null;
+    const assignments = assignmentResult.success ? assignmentResult.data as any : null;
+    const allAssignments = [...(assignments?.classAssignments || []), ...(assignments?.subjectAssignments || [])]
+      .filter((item: any) => item.session_id === term?.session_id && item.class_id);
+    const classes = Array.from(new Map(allAssignments.map((item: any) => [item.class_id, { id: item.class_id, name: item.class?.name || 'Assigned class' }])).values()) as Array<{ id: string; name: string }>;
+    const context = term ? { sessionId: term.session_id, termId: term.id } : null;
+    setTeacherClasses(classes);
+    setTeacherAcademicContext(context);
+    const classId = classes[0]?.id || '';
+    setSelectedTeacherClassId(classId);
+    if (!classId || !context) {
+      setTeacherBroadsheetHtml('');
+      setTeacherBroadsheetLoading(false);
+      return;
+    }
+    const params = new URLSearchParams({ class_id: classId, session_id: context.sessionId, term_id: context.termId });
+    const result = await call(`/broadsheets/full-preview?${params.toString()}`);
+    setTeacherBroadsheetHtml(result.success && result.data ? broadsheetDocument(result.data) : '');
+    setTeacherBroadsheetLoading(false);
+  }, [call, isTeacher]);
+
+  const selectTeacherClass = (classId: string) => {
+    setSelectedTeacherClassId(classId);
+    loadTeacherBroadsheet(classId);
+  };
+
   useEffect(() => {
     fetchBroadsheets();
   }, [fetchBroadsheets]);
+
+  useEffect(() => {
+    initializeTeacherBroadsheet();
+  }, [initializeTeacherBroadsheet]);
 
   const handleSubmitBroadsheet = async (broadsheet: BroadsheetSubmission) => {
     const result = await call('/broadsheets/submit', {
@@ -196,12 +244,17 @@ export default function BroadsheetsPage() {
         </div>
       </div>
 
-      <Card>
+      {isTeacher && (
+        <Card title="Complete Class Broadsheet" subtitle="Your authorized class roster and all applicable subject columns. Empty score cells mean no score has been saved yet." action={<div className="flex flex-wrap items-center gap-2">{teacherClasses.length > 1 && <select aria-label="Select class broadsheet" className="form-input h-9 min-w-40 py-1 text-sm" value={selectedTeacherClassId} onChange={(event) => selectTeacherClass(event.target.value)}>{teacherClasses.map((classItem) => <option key={classItem.id} value={classItem.id}>{classItem.name}</option>)}</select>}<Button size="sm" variant="secondary" onClick={() => loadTeacherBroadsheet()} loading={teacherBroadsheetLoading}>Refresh</Button><Button size="sm" onClick={() => openPrintableDocument(teacherBroadsheetHtml)} disabled={!teacherBroadsheetHtml}>Print / Save as PDF</Button></div>} padding="none" hover={false}>
+          {teacherBroadsheetLoading ? <div className="p-8 text-center text-gray-500">Loading your complete class broadsheet...</div> : teacherBroadsheetHtml ? <iframe title="Complete class broadsheet" className="h-[820px] w-full border-0 bg-white" srcDoc={teacherBroadsheetHtml} /> : <div className="p-8 text-center text-gray-500">No current class assignment or current term is available for a broadsheet.</div>}
+        </Card>
+      )}
+      <Card className={isTeacher ? 'mt-6' : ''}>
         <Table
           columns={columns}
           data={broadsheets}
           loading={loading}
-          emptyMessage="No broadsheets found"
+          emptyMessage={isTeacher ? 'Your full class broadsheet is shown above. Submission rows appear here after a broadsheet is saved or returned.' : 'No broadsheets found'}
         />
       </Card>
 

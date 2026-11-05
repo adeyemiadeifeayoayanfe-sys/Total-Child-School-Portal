@@ -464,6 +464,11 @@ export default function DashboardPage() {
             </div>
           </Card>
         )}
+        {Array.isArray(data.pending_broadsheets) && data.pending_broadsheets.length > 0 && (
+          <Card title="Assigned Broadsheets" subtitle="Your current class and subject broadsheets. Draft rows appear before any score has been entered." className="no-print">
+            <div className="table-container"><table className="table"><thead><tr><th>Class</th><th>Subject</th><th>Status</th><th></th></tr></thead><tbody>{data.pending_broadsheets.map((sheet: any, index: number) => <tr key={sheet.id || index}><td>{sheet.class?.name || 'Assigned class'}</td><td>{sheet.subject?.name || 'Assigned subject'}</td><td className="capitalize">{sheet.status || 'draft'}</td><td><Button size="sm" variant="outline" onClick={() => navigate('/broadsheets')}>Open</Button></td></tr>)}</tbody></table></div>
+          </Card>
+        )}
         {Array.isArray(data.classes) && data.classes.length > 0 && (
           <Card title="My Classes" className="no-print">
             <div className="table-container">
