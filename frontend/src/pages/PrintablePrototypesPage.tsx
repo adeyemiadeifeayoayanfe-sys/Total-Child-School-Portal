@@ -1,0 +1,28 @@
+import React, { useState } from 'react';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Modal from '../components/ui/Modal';
+
+type PrototypeKind = 'result' | 'broadsheet' | 'incomplete-result' | 'incomplete-broadsheet';
+
+const labels: Record<PrototypeKind, string> = {
+  result: 'Individual Result', broadsheet: 'Class Broadsheet', 'incomplete-result': 'Incomplete Result', 'incomplete-broadsheet': 'Incomplete Broadsheet',
+};
+const scores = [{ subject: 'Mathematics', t1: 18, t2: 17, t3: 19, exam: 36 }, { subject: 'English Language', t1: 16, t2: 15, t3: 17, exam: 34 }, { subject: 'Basic Science', t1: 20, t2: 18, t3: 18, exam: 37 }];
+
+function markup(kind: PrototypeKind) {
+  const incomplete = kind.includes('incomplete');
+  const result = kind.includes('result');
+  const rows = scores.map((row, index) => {
+    const pending = incomplete && index > 0;
+    const total = row.t1 + row.t2 + row.t3 + row.exam;
+    return `<tr><td>${result ? row.subject : index + 1}</td>${result ? '' : `<td>${['Amina Grace Adeyemi', 'David Michael Doe', 'Sarah Bello'][index]}</td>`}<td>${pending ? '' : row.t1}</td><td>${pending ? '' : row.t2}</td><td>${pending ? '' : row.t3}</td><td>${pending ? '' : row.exam}</td><td>${pending ? 'Pending' : total}</td><td>${pending ? 'Pending' : 'A'}</td></tr>`;
+  }).join('');
+  return `<!doctype html><html><head><title>${labels[kind]} Prototype</title><style>@page{size:${result ? 'A4 portrait' : 'A4 landscape'};margin:12mm}*{box-sizing:border-box}body{font:11px Arial;color:#111827}.sample{color:#b91c1c;font-weight:800;letter-spacing:1px}.head{text-align:center;border-bottom:2px solid #1d4ed8;padding-bottom:10px}.head h1{margin:0;color:#1d4ed8;font-size:22px}.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin:12px 0}.meta div{border:1px solid #94a3b8;padding:7px}.label{font-size:8px;text-transform:uppercase;color:#64748b}table{width:100%;border-collapse:collapse}th,td{border:1px solid #94a3b8;padding:6px;text-align:center}th{background:#dbeafe}td:first-child{text-align:left;font-weight:600}thead{display:table-header-group}tr{break-inside:avoid}.note{margin:12px 0;border:1px solid #fbbf24;background:#fffbeb;padding:8px}.comments{margin-top:14px;border:1px solid #94a3b8;padding:8px;min-height:55px}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="head"><div class="sample">SAMPLE / PROTOTYPE — NOT A SCHOOL RECORD</div><h1>CEM Total Child School</h1><strong>${result ? 'STUDENT REPORT CARD PREVIEW' : 'CLASS BROADSHEET PREVIEW'}</strong></div><div class="meta"><div><span class="label">${result ? 'Student' : 'Class'}</span><br>${result ? 'Amina Grace Adeyemi (CEM-S-0001)' : 'Primary Five'}</div><div><span class="label">Session / Term</span><br>2026/2027 — First Term</div><div><span class="label">Assessment</span><br>Examination</div><div><span class="label">Status</span><br>${incomplete ? 'In Progress — pending marks are blank' : 'Complete sample'}</div></div>${incomplete ? '<div class="note">This example deliberately keeps missing assessments blank. Blank values are pending and are not calculated as zero.</div>' : ''}<table><thead><tr><th>${result ? 'Subject' : '#'}</th>${result ? '' : '<th>Student</th>'}<th>Test 1</th><th>Test 2</th><th>Test 3</th><th>Exam</th><th>Total</th><th>Grade</th></tr></thead><tbody>${rows}</tbody></table>${result ? '<div class="comments"><strong>Teacher Comment</strong><br>Consistent effort shown throughout the term.</div><div class="comments"><strong>Head Teacher Comment</strong><br>Keep up the excellent work.</div>' : ''}</body></html>`;
+}
+
+export default function PrintablePrototypesPage() {
+  const [selected, setSelected] = useState<PrototypeKind | null>(null);
+  const print = (kind: PrototypeKind) => { const popup = window.open('', '_blank', 'width=1100,height=900'); if (!popup) return; popup.document.write(markup(kind)); popup.document.close(); popup.focus(); window.setTimeout(() => popup.print(), 250); };
+  return <div><div className="page-header"><div><h1 className="page-title">Printable Prototypes</h1><p className="page-description">Safe samples using the portal’s report-card and broadsheet print conventions. They never create or read school records.</p></div></div><div className="grid gap-5 md:grid-cols-2">{(Object.keys(labels) as PrototypeKind[]).map((kind) => <Card key={kind} title={labels[kind]} subtitle={kind.includes('incomplete') ? 'Demonstrates pending assessments and blank score cells.' : 'Demonstrates a completed printable layout.'} action={<Button size="sm" variant="outline" onClick={() => print(kind)}>Print</Button>}><p className="mb-4 text-sm text-gray-600">Clearly labelled sample data for visual review only.</p><Button onClick={() => setSelected(kind)}>Open Preview</Button></Card>)}</div><Modal open={!!selected} onClose={() => setSelected(null)} title={selected ? `${labels[selected]} Prototype` : 'Prototype'} size="lg" footer={selected ? <Button onClick={() => print(selected)}>Print / Save as PDF</Button> : undefined}>{selected && <iframe title="Printable prototype" className="h-[620px] w-full border-0" srcDoc={markup(selected)} />}</Modal></div>;
+}

@@ -4,7 +4,7 @@ import { authenticate, authorizeAdmin, authorizeTeacher } from '../middleware/au
 import { validate } from '../middleware/validation';
 import { AppError, NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { submitBroadsheetSchema, returnBroadsheetSchema, approveBroadsheetSchema } from '../validators/broadsheet';
-import { submitBroadsheet, returnBroadsheet, approveBroadsheet, getBroadsheets, getBroadsheetById, getPrintableBroadsheet, checkAllBroadsheetsSubmitted } from '../services/broadsheetService';
+import { submitBroadsheet, returnBroadsheet, approveBroadsheet, getBroadsheets, getBroadsheetById, getPrintableBroadsheet, getBroadsheetPreview, checkAllBroadsheetsSubmitted } from '../services/broadsheetService';
 import { getTeacherRecordForUser } from '../services/accessService';
 
 const router = Router();
@@ -44,6 +44,15 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
   }
 });
 
+router.get('/preview', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const teacher = req.user?.role === 'teacher' ? await getTeacherRecordForUser(req.authUserId!) : undefined;
+    if (!teacher && req.user?.role !== 'admin' && req.user?.role !== 'super_admin') throw new ForbiddenError('You do not have permission to preview this broadsheet');
+    const data = await getBroadsheetPreview(req.query as any, teacher?.id);
+    res.json({ success: true, data });
+  } catch (error) { next(error); }
+});
+
 /**
  * GET /api/broadsheets/:id
  * Get broadsheet details
@@ -53,25 +62,13 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
     if (req.user?.role === 'teacher') {
       const teacher = await getTeacherRecordForUser(req.authUserId!);
       const broadsheet = await getBroadsheetById(req.params.id, teacher.id);
-      res.json({
-        success: true,
-        data: broadsheet,
-      });
+      res.json({ success: true, data: broadsheet });
       return;
     }
-
-    if (req.user?.role !== 'admin' && req.user?.role !== 'super_admin') {
-      throw new ForbiddenError('You do not have permission to view this broadsheet');
-    }
-
+    if (req.user?.role !== 'admin' && req.user?.role !== 'super_admin') throw new ForbiddenError('You do not have permission to view this broadsheet');
     const broadsheet = await getBroadsheetById(req.params.id);
-    res.json({
-      success: true,
-      data: broadsheet,
-    });
-  } catch (error) {
-    next(error);
-  }
+    res.json({ success: true, data: broadsheet });
+  } catch (error) { next(error); }
 });
 
 router.get('/:id/print', authenticate, async (req: Request, res: Response, next: NextFunction) => {

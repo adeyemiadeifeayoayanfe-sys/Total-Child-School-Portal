@@ -35,6 +35,7 @@ import SettingsPage from './pages/SettingsPage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import UsersPage from './pages/UsersPage';
 import ScoreReviewPage from './pages/ScoreReviewPage';
+import PrintablePrototypesPage from './pages/PrintablePrototypesPage';
 
 import ProfilePage from './pages/ProfilePage';
 import ParentChildrenPage from './pages/ParentChildrenPage';
@@ -377,6 +378,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/printable-prototypes" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><PrintablePrototypesPage /></ProtectedRoute>} />
 
           <Route
             path="/audit-logs"

@@ -50,6 +50,7 @@ export default function Sidebar({
         { to: '/attendance', icon: 'AT', label: 'Attendance' },
         { to: '/broadsheets', icon: 'BR', label: 'Broadsheets' },
         { to: '/score-review', icon: 'GR', label: 'General Review' },
+        { to: '/printable-prototypes', icon: 'PP', label: 'Printable Prototypes' },
         { to: '/results', icon: 'RE', label: 'Results' },
       ],
     });

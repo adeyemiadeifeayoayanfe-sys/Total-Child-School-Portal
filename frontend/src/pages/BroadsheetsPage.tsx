@@ -30,10 +30,19 @@ export default function BroadsheetsPage() {
     setLoading(true);
     const result = await call('/broadsheets');
     if (result.success && result.data) {
-      setBroadsheets(result.data);
+      const saved = result.data as BroadsheetSubmission[];
+      if (isTeacher) {
+        const [assignmentResult, termResult] = await Promise.all([call('/teachers/my/assignments'), call('/sessions/current-term')]);
+        const term: any = termResult.success ? termResult.data : null;
+        const assignments = assignmentResult.success ? (assignmentResult.data as any)?.subjectAssignments || [] : [];
+        const previewRows = term ? assignments.filter((assignment: any) => assignment.session_id === term.session_id)
+          .filter((assignment: any) => !saved.some((sheet) => sheet.class_id === assignment.class_id && sheet.subject_id === assignment.subject_id && sheet.session_id === term.session_id && sheet.term_id === term.id))
+          .map((assignment: any) => ({ id: `preview:${assignment.class_id}:${assignment.subject_id}:${term.id}`, class_id: assignment.class_id, subject_id: assignment.subject_id, session_id: term.session_id, term_id: term.id, teacher_id: '', status: 'draft', submitted_at: null, approved_at: null, returned_at: null, return_reason: null, class: assignment.class, subject: assignment.subject } as BroadsheetSubmission)) : [];
+        setBroadsheets([...previewRows, ...saved]);
+      } else setBroadsheets(saved);
     }
     setLoading(false);
-  }, [call]);
+  }, [call, isTeacher]);
 
   useEffect(() => {
     fetchBroadsheets();
@@ -95,7 +104,9 @@ export default function BroadsheetsPage() {
   };
 
   const printBroadsheet = async (broadsheet: BroadsheetSubmission) => {
-    const result = await call(`/broadsheets/${broadsheet.id}/print`);
+    const isPreview = broadsheet.id.startsWith('preview:');
+    const query = new URLSearchParams({ class_id: broadsheet.class_id, subject_id: broadsheet.subject_id, session_id: broadsheet.session_id, term_id: broadsheet.term_id });
+    const result = await call(isPreview ? `/broadsheets/preview?${query.toString()}` : `/broadsheets/${broadsheet.id}/print`);
     if (!result.success || !result.data) { showToast('error', result.error || 'Failed to prepare broadsheet'); return; }
     const data: any = result.data;
     const esc = (value: unknown) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

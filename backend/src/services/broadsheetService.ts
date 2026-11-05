@@ -346,6 +346,24 @@ export async function getBroadsheetById(broadsheetId: string, teacherId?: string
 
 export async function getPrintableBroadsheet(broadsheetId: string, teacherId?: string) {
   const broadsheet = await getBroadsheetById(broadsheetId, teacherId);
+  return getPrintableBroadsheetData(broadsheet, teacherId);
+}
+
+export async function getBroadsheetPreview(input: SubmitBroadsheetInput, teacherId?: string) {
+  if (teacherId) await ensureTeacherAssignedToSubject(teacherId, input.subject_id, input.class_id, input.session_id);
+  const [{ data: classData }, { data: subject }, { data: session }, { data: term }, { data: classSubject }, { data: submission }] = await Promise.all([
+    supabaseAdmin.from('classes').select('id, name').eq('id', input.class_id).single(),
+    supabaseAdmin.from('subjects').select('id, name, code').eq('id', input.subject_id).single(),
+    supabaseAdmin.from('academic_sessions').select('id, name').eq('id', input.session_id).single(),
+    supabaseAdmin.from('terms').select('id, name, session_id, assessment_stage').eq('id', input.term_id).single(),
+    supabaseAdmin.from('class_subject_assignments').select('id').eq('class_id', input.class_id).eq('subject_id', input.subject_id).eq('session_id', input.session_id).eq('is_active', true).maybeSingle(),
+    supabaseAdmin.from('broadsheet_submissions').select('*').eq('class_id', input.class_id).eq('subject_id', input.subject_id).eq('session_id', input.session_id).eq('term_id', input.term_id).maybeSingle(),
+  ]);
+  if (!classData || !subject || !session || !term || !classSubject || term.session_id !== input.session_id) throw new NotFoundError('Broadsheet context not found');
+  return getPrintableBroadsheetData({ ...input, id: submission?.id || '', status: submission?.status || 'draft', class: classData, subject, session, term }, teacherId);
+}
+
+async function getPrintableBroadsheetData(broadsheet: any, _teacherId?: string) {
   const { data: enrollments, error: enrollmentError } = await supabaseAdmin
     .from('enrollments')
     .select('student:students(id, admission_number, first_name, middle_name, last_name)')
