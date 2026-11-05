@@ -9,6 +9,7 @@ import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
 import { formatStudentName } from '../utils/studentName';
+import { openPrintableDocument, reportCardDocument } from '../utils/printDocuments';
 export default function ResultsPage() {
   const { call } = useApi();
   const { showToast } = useToast();
@@ -21,6 +22,7 @@ export default function ResultsPage() {
   const [showBulkGenerateModal, setShowBulkGenerateModal] = useState(false);
   const [selectedResult, setSelectedResult] = useState<Result | null>(null);
   const [showResultDetail, setShowResultDetail] = useState(false);
+  const [reportPreviewHtml, setReportPreviewHtml] = useState('');
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [regenerateReason, setRegenerateReason] = useState('');
   const [sessions, setSessions] = useState<any[]>([]);
@@ -216,18 +218,24 @@ export default function ResultsPage() {
     }
     setShowResultDetail(true);
   };
-  const printReportCard = (result: Result) => {
+  const printReportCard = async (result: Result) => {
     if (result.status !== 'published') {
       showToast('error', 'Only published results can be printed');
       return;
     }
+    const rulesResult = await call('/settings/grading-rules');
+    const gradeRules = rulesResult.success && Array.isArray(rulesResult.data) ? rulesResult.data : [];
+    if (!openPrintableDocument(reportCardDocument(result, gradeRules), 900, 1200)) {
+      showToast('error', 'Please allow pop-ups to print the report card');
+    }
+    return;
     const student = result.student;
     const scores = result.scores || [];
     const assessment = Array.isArray((result as any).personal_assessment)
       ? (result as any).personal_assessment[0]
       : (result as any).personal_assessment;
     const termName = result.term?.name
-      ? `${result.term.name.charAt(0).toUpperCase()}${result.term.name.slice(1)} Term`
+      ? `${result.term?.name.charAt(0).toUpperCase()}${result.term?.name.slice(1)} Term`
       : 'Term';
     const esc = (value: unknown) =>
       String(value ?? '')
@@ -263,7 +271,7 @@ export default function ResultsPage() {
       );
       return;
     }
-    printWindow.document.write(`
+    printWindow!.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
@@ -518,10 +526,10 @@ export default function ResultsPage() {
       </body>
       </html>
     `);
-    printWindow.document.close();
-    printWindow.focus();
+    printWindow!.document.close();
+    printWindow!.focus();
     setTimeout(() => {
-      printWindow.print();
+      printWindow!.print();
     }, 300);
   };
   const columns = [
@@ -881,6 +889,7 @@ export default function ResultsPage() {
         {selectedResult && (
           <>
             <div className="flex justify-end gap-2 mb-4">
+              {selectedResult.status === 'published' && <Button variant="secondary" onClick={async () => { const rules = await call('/settings/grading-rules'); setReportPreviewHtml(reportCardDocument(selectedResult, rules.success && Array.isArray(rules.data) ? rules.data : [])); }}>Preview Report Card</Button>}
               {selectedResult.status === 'published' && <Button variant="outline" onClick={() => printReportCard(selectedResult)}>Print Report Card</Button>}
             </div>
             <div className="grid gap-4">
@@ -1009,6 +1018,9 @@ export default function ResultsPage() {
             </div>
           </>
         )}
+      </Modal>
+      <Modal open={!!reportPreviewHtml} onClose={() => setReportPreviewHtml('')} title="Report Card Preview" size="lg" footer={<Button onClick={() => { if (!openPrintableDocument(reportPreviewHtml, 900, 1200)) showToast('error', 'Please allow pop-ups to print the report card'); }}>Print / Save as PDF</Button>}>
+        <iframe title="Report card document preview" className="h-[620px] w-full border-0" srcDoc={reportPreviewHtml} />
       </Modal>
     </div>
   );

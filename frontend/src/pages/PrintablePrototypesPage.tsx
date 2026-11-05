@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
+import { broadsheetDocument, openPrintableDocument, reportCardDocument } from '../utils/printDocuments';
 
 type PrototypeKind = 'result' | 'broadsheet' | 'incomplete-result' | 'incomplete-broadsheet';
 
@@ -13,6 +14,11 @@ const scores = [{ subject: 'Mathematics', t1: 18, t2: 17, t3: 19, exam: 36 }, { 
 function markup(kind: PrototypeKind) {
   const incomplete = kind.includes('incomplete');
   const result = kind.includes('result');
+  const sampleScores = scores.map((item, index) => ({ subject: { name: item.subject }, test1: incomplete && index > 0 ? null : item.t1, test2: incomplete && index > 0 ? null : item.t2, test3: incomplete && index > 0 ? null : item.t3, examination: incomplete && index > 0 ? null : item.exam, total: incomplete && index > 0 ? null : item.t1 + item.t2 + item.t3 + item.exam, percentage: incomplete && index > 0 ? null : item.t1 + item.t2 + item.t3 + item.exam, grade: incomplete && index > 0 ? null : 'A' }));
+  const sampleResult = { student: { first_name: 'Amina', middle_name: 'Grace', last_name: 'Adeyemi', admission_number: 'CEM-S-0001' }, class: { name: 'Primary Five' }, session: { name: '2026/2027' }, term: { name: 'third', end_date: '2027-07-30' }, term_position: incomplete ? null : 1, attendance_days: 98, attendance_present: 94, scores: sampleScores, personal_assessment: { neatness: 5, punctuality: 4, discipline: 5, cooperation: 5, teacher_comment: 'Consistent effort shown throughout the term.', head_teacher_comment: 'Keep up the excellent work.' } };
+  const sampleBroadsheet = { class: { name: 'Primary Five' }, session: { name: '2026/2027' }, term: { name: 'third' }, subject: { name: 'Mathematics' }, students: ['Amina Grace Adeyemi', 'David Michael Doe', 'Sarah Bello'].map((name, index) => ({ student: { first_name: name.split(' ')[0], middle_name: name.split(' ').length === 3 ? name.split(' ')[1] : '', last_name: name.split(' ').slice(-1)[0] }, score: incomplete && index > 0 ? null : { test1: scores[index].t1, test2: scores[index].t2, test3: scores[index].t3, examination: scores[index].exam, total: scores[index].t1 + scores[index].t2 + scores[index].t3 + scores[index].exam, percentage: scores[index].t1 + scores[index].t2 + scores[index].t3 + scores[index].exam } })) };
+  return result ? reportCardDocument(sampleResult, [{ grade: 'A', min_score: 70, max_score: 100, description: 'Excellent' }], true) : broadsheetDocument(sampleBroadsheet, true);
+  /* Legacy standalone prototype markup retained below only as source context. */
   const rows = scores.map((row, index) => {
     const pending = incomplete && index > 0;
     const total = row.t1 + row.t2 + row.t3 + row.exam;
@@ -23,6 +29,6 @@ function markup(kind: PrototypeKind) {
 
 export default function PrintablePrototypesPage() {
   const [selected, setSelected] = useState<PrototypeKind | null>(null);
-  const print = (kind: PrototypeKind) => { const popup = window.open('', '_blank', 'width=1100,height=900'); if (!popup) return; popup.document.write(markup(kind)); popup.document.close(); popup.focus(); window.setTimeout(() => popup.print(), 250); };
+  const print = (kind: PrototypeKind) => { openPrintableDocument(markup(kind)); };
   return <div><div className="page-header"><div><h1 className="page-title">Printable Prototypes</h1><p className="page-description">Safe samples using the portal’s report-card and broadsheet print conventions. They never create or read school records.</p></div></div><div className="grid gap-5 md:grid-cols-2">{(Object.keys(labels) as PrototypeKind[]).map((kind) => <Card key={kind} title={labels[kind]} subtitle={kind.includes('incomplete') ? 'Demonstrates pending assessments and blank score cells.' : 'Demonstrates a completed printable layout.'} action={<Button size="sm" variant="outline" onClick={() => print(kind)}>Print</Button>}><p className="mb-4 text-sm text-gray-600">Clearly labelled sample data for visual review only.</p><Button onClick={() => setSelected(kind)}>Open Preview</Button></Card>)}</div><Modal open={!!selected} onClose={() => setSelected(null)} title={selected ? `${labels[selected]} Prototype` : 'Prototype'} size="lg" footer={selected ? <Button onClick={() => print(selected)}>Print / Save as PDF</Button> : undefined}>{selected && <iframe title="Printable prototype" className="h-[620px] w-full border-0" srcDoc={markup(selected)} />}</Modal></div>;
 }

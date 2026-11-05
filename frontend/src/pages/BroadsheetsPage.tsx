@@ -9,6 +9,7 @@ import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/Badge';
 import { formatStudentName } from '../utils/studentName';
+import { broadsheetDocument, openPrintableDocument } from '../utils/printDocuments';
 
 export default function BroadsheetsPage() {
   const { call } = useApi();
@@ -21,6 +22,7 @@ export default function BroadsheetsPage() {
   const [selectedBroadsheet, setSelectedBroadsheet] = useState<BroadsheetSubmission | null>(null);
   const [returnReason, setReturnReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
 
   const role = activeRole || user?.role;
   const isTeacher = role === 'teacher';
@@ -103,18 +105,25 @@ export default function BroadsheetsPage() {
     setSubmitting(false);
   };
 
-  const printBroadsheet = async (broadsheet: BroadsheetSubmission) => {
+  const prepareBroadsheet = async (broadsheet: BroadsheetSubmission) => {
     const isPreview = broadsheet.id.startsWith('preview:');
     const query = new URLSearchParams({ class_id: broadsheet.class_id, subject_id: broadsheet.subject_id, session_id: broadsheet.session_id, term_id: broadsheet.term_id });
     const result = await call(isPreview ? `/broadsheets/preview?${query.toString()}` : `/broadsheets/${broadsheet.id}/print`);
-    if (!result.success || !result.data) { showToast('error', result.error || 'Failed to prepare broadsheet'); return; }
+    if (!result.success || !result.data) { showToast('error', result.error || 'Failed to prepare broadsheet'); return null; }
     const data: any = result.data;
-    const esc = (value: unknown) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const rows = (data.students || []).map((item: any, index: number) => `<tr><td>${index + 1}</td><td>${esc(formatStudentName(item.student))}</td><td>${esc(item.student?.admission_number || '-')}</td><td>${item.score?.test1 ?? '-'}</td><td>${item.score?.test2 ?? '-'}</td><td>${item.score?.test3 ?? '-'}</td><td>${item.score?.examination ?? '-'}</td><td>${item.score ? `<strong>${esc(item.score.total)}</strong>` : '-'}</td></tr>`).join('');
-    const printWindow = window.open('', '_blank', 'width=1200,height=900');
-    if (!printWindow) { showToast('error', 'Please allow pop-ups to print the broadsheet'); return; }
-    printWindow.document.write(`<!doctype html><html><head><title>Broadsheet</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111827;font-size:10px}.header{text-align:center;border-bottom:2px solid #1d4ed8;margin-bottom:10px;padding-bottom:8px}h1{margin:0;color:#1d4ed8;font-size:20px}.context{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:10px 0}.context div{border:1px solid #cbd5e1;padding:5px}.label{font-size:8px;color:#64748b;text-transform:uppercase}table{width:100%;border-collapse:collapse}thead{display:table-header-group}th,td{border:1px solid #94a3b8;padding:5px;text-align:center}th{background:#dbeafe;font-weight:700}td:nth-child(2){text-align:left}tr{break-inside:avoid}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="header"><h1>CEM Total Child School</h1><strong>CLASS BROADSHEET</strong></div><div class="context"><div><span class="label">Class</span><br>${esc(data.class?.name)}</div><div><span class="label">Subject</span><br>${esc(data.subject?.name)}</div><div><span class="label">Session / Term</span><br>${esc(data.session?.name)} / ${esc(data.term?.name)}</div><div><span class="label">Assessment Stage</span><br>${esc(data.term?.assessment_stage || '-')}</div></div><table><thead><tr><th>#</th><th>Student</th><th>Admission No.</th><th>Test 1 /20</th><th>Test 2 /20</th><th>Test 3 /20</th><th>Exam /40</th><th>Total /100</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
-    printWindow.document.close(); printWindow.focus(); setTimeout(() => printWindow.print(), 300);
+    return broadsheetDocument(data);
+  };
+
+  const printBroadsheet = async (broadsheet: BroadsheetSubmission) => {
+    const html = await prepareBroadsheet(broadsheet);
+    if (html && !openPrintableDocument(html)) showToast('error', 'Please allow pop-ups to print the broadsheet');
+  };
+
+  const previewFullClassBroadsheet = async (broadsheet: BroadsheetSubmission) => {
+    const query = new URLSearchParams({ class_id: broadsheet.class_id, session_id: broadsheet.session_id, term_id: broadsheet.term_id });
+    const result = await call(`/broadsheets/full-preview?${query.toString()}`);
+    if (!result.success || !result.data) { showToast('error', result.error || 'Failed to prepare the full class broadsheet'); return; }
+    setPreviewHtml(broadsheetDocument(result.data));
   };
 
   const columns = [
@@ -146,6 +155,8 @@ export default function BroadsheetsPage() {
       header: 'Actions',
       render: (broadsheet: BroadsheetSubmission) => (
         <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" size="sm" onClick={() => previewFullClassBroadsheet(broadsheet)}>Full Class</Button>
+          <Button variant="secondary" size="sm" onClick={async () => { const html = await prepareBroadsheet(broadsheet); if (html) setPreviewHtml(html); }}>Preview</Button>
           <Button variant="outline" size="sm" onClick={() => printBroadsheet(broadsheet)}>Print</Button>
           {isTeacher && (broadsheet.status === 'draft' || broadsheet.status === 'returned') && (
             <Button
@@ -225,6 +236,9 @@ export default function BroadsheetsPage() {
             Return Broadsheet
           </Button>
         </div>
+      </Modal>
+      <Modal open={!!previewHtml} onClose={() => setPreviewHtml('')} title="Broadsheet Preview" size="lg" footer={<Button onClick={() => { if (!openPrintableDocument(previewHtml)) showToast('error', 'Please allow pop-ups to print the broadsheet'); }}>Print / Save as PDF</Button>}>
+        <iframe title="Broadsheet document preview" className="h-[620px] w-full border-0" srcDoc={previewHtml} />
       </Modal>
     </div>
   );

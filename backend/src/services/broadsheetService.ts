@@ -363,6 +363,43 @@ export async function getBroadsheetPreview(input: SubmitBroadsheetInput, teacher
   return getPrintableBroadsheetData({ ...input, id: submission?.id || '', status: submission?.status || 'draft', class: classData, subject, session, term }, teacherId);
 }
 
+export async function getFullPrintableBroadsheet(input: { class_id: string; session_id: string; term_id: string }, teacherId?: string) {
+  const [{ data: classData }, { data: session }, { data: term }, { data: classSubjects }, { data: enrollments, error: enrollmentError }] = await Promise.all([
+    supabaseAdmin.from('classes').select('id, name').eq('id', input.class_id).single(),
+    supabaseAdmin.from('academic_sessions').select('id, name').eq('id', input.session_id).single(),
+    supabaseAdmin.from('terms').select('id, name, session_id, assessment_stage').eq('id', input.term_id).single(),
+    supabaseAdmin.from('class_subject_assignments').select('subject_id, subject:subjects(id, name, code)').eq('class_id', input.class_id).eq('session_id', input.session_id).eq('is_active', true),
+    supabaseAdmin.from('enrollments').select('student:students(id, admission_number, first_name, middle_name, last_name)').eq('class_id', input.class_id).eq('session_id', input.session_id).is('unenrolled_at', null),
+  ]);
+  if (!classData || !session || !term || term.session_id !== input.session_id) throw new NotFoundError('Broadsheet context not found');
+  if (enrollmentError) throw new AppError('Failed to load class roster', 500);
+  let subjects = classSubjects || [];
+  if (teacherId) {
+    const [{ data: direct }, { data: classTeacher }] = await Promise.all([
+      supabaseAdmin.from('teacher_subject_assignments').select('subject_id').eq('teacher_id', teacherId).eq('class_id', input.class_id).eq('session_id', input.session_id).is('unassigned_at', null),
+      supabaseAdmin.from('teacher_class_assignments').select('id').eq('teacher_id', teacherId).eq('class_id', input.class_id).eq('session_id', input.session_id).is('unassigned_at', null).maybeSingle(),
+    ]);
+    const allowed = new Set((direct || []).map((item: any) => item.subject_id));
+    if (classTeacher) subjects = subjects;
+    else subjects = subjects.filter((item: any) => allowed.has(item.subject_id));
+  }
+  if (!subjects.length) throw new ForbiddenError('No authorized subjects were found for this broadsheet');
+  const subjectIds = subjects.map((item: any) => item.subject_id);
+  const [{ data: scores, error: scoreError }, { data: results }] = await Promise.all([
+    supabaseAdmin.from('scores').select('*').eq('class_id', input.class_id).eq('session_id', input.session_id).eq('term_id', input.term_id).in('subject_id', subjectIds),
+    supabaseAdmin.from('results').select('student_id, term_average, term_position, status').eq('class_id', input.class_id).eq('session_id', input.session_id).eq('term_id', input.term_id),
+  ]);
+  if (scoreError) throw new AppError('Failed to load broadsheet scores', 500);
+  const scoreMap = new Map((scores || []).map((item: any) => [`${item.student_id}:${item.subject_id}`, item]));
+  const resultMap = new Map((results || []).map((item: any) => [item.student_id, item]));
+  return {
+    class: classData, session, term,
+    subjects: subjects.map((item: any) => item.subject),
+    students: (enrollments || []).map((item: any) => ({ student: item.student, scores: Object.fromEntries(subjectIds.map((subjectId: string) => [subjectId, scoreMap.get(`${item.student?.id}:${subjectId}`) || null])), result: resultMap.get(item.student?.id) || null }))
+      .sort((left: any, right: any) => `${left.student?.first_name || ''} ${left.student?.middle_name || ''} ${left.student?.last_name || ''}`.localeCompare(`${right.student?.first_name || ''} ${right.student?.middle_name || ''} ${right.student?.last_name || ''}`)),
+  };
+}
+
 async function getPrintableBroadsheetData(broadsheet: any, _teacherId?: string) {
   const { data: enrollments, error: enrollmentError } = await supabaseAdmin
     .from('enrollments')
